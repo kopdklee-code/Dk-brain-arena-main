@@ -25,6 +25,8 @@
 | Hosting 사이트 | `dk-brain-arena` → https://dk-brain-arena.web.app 존재 |
 | Cloud Firestore | 처음 조회 때는 없음(403). 사용자가 콘솔에서 만든 뒤 다시 조회: `(default)` 데이터베이스, FIRESTORE_NATIVE, STANDARD 버전, 위치 `asia-northeast3`, 생성 2026-11-22 03:17 UTC (`firestore:databases:get`). 삭제 보호·PITR은 꺼져 있음. 현재 적용된 보안 규칙 내용과 `firestore.rules` 배포는 확인하지 않음 |
 | Authentication 제공자, 요금제(Blaze) | CLI로 확인하지 않음(**미확인**). 콘솔에서 확인 필요 |
+| Firestore 보안 규칙 배포 (사용자 지시: 규칙만) | `firebase deploy --only firestore:rules --project prod` 실행(커밋 `8c119b9`의 `firestore.rules`, 작업 트리 변경 없음). 컴파일 성공, `released rules firestore.rules to cloud.firestore`. Functions·Hosting·인덱스는 배포하지 않음 |
+| 규칙 적용 확인 (읽기 전용) | 비로그인 REST 읽기로 `rooms/…`, `codes/…`, `rooms/…/server/state` 모두 HTTP 403. 단, 콘솔의 프로덕션 모드 기본 규칙도 모두 거부하므로 이 결과만으로 우리 규칙임을 구별할 수는 없음. 로그인 사용자 기준 동작(공개 문서 읽기 허용·서버 문서 거부)은 운영 계정이 없어 **미확인** |
 
 ### 로컬 검증 (운영 설정 추가 후) — `npm run verify` 종료 코드 0
 | 단계 | 결과 |
@@ -35,7 +37,7 @@
 | 에뮬레이터 통합 7/7, 브라우저 E2E, 연결 끊김·재연결 19/19 | 통과. Functions 에뮬레이터는 `Using node@22 from host.` |
 
 ### 기록 3의 미검증 (통과로 보지 않음)
-- **운영 프로젝트에서는 아무것도 실행하지 않았습니다**: 배포, 운영 Auth·Firestore 접속, 운영 데이터 쓰기 모두 하지 않음. 운영 환경에서 실제로 동작하는지는 배포 후 확인해야 합니다.
+- **운영 프로젝트에서 실행한 것은 Firestore 보안 규칙 배포와 비로그인 읽기 시도뿐입니다.** Functions·Hosting 배포, 운영 Auth 사용, 운영 데이터 쓰기는 하지 않음. 운영 환경에서 실제로 동작하는지는 배포 후 확인해야 합니다.
 - **로컬 E2E가 운영에 접속하지 않았다는 근거**: 다음 세 가지로 판단했습니다. ① 연결 대상 단위 테스트, ② 로컬 E2E가 `127.0.0.1`에서 실행됨, ③ 운영 프로젝트에 Auth 제공자와 Firestore가 아직 없는데도 E2E의 계정 생성과 방 진행이 성공함. 운영 Auth 사용자 목록은 실제 사용자 데이터라 직접 조회하지 않았습니다.
 - **콘솔에서만 확인 가능한 항목**: Auth 제공자 사용 설정, Blaze 요금제, API 키 제한.
 

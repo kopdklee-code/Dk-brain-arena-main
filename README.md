@@ -108,7 +108,7 @@ npm run test:reconnect
 웹 앱 설정의 `apiKey`는 브라우저 코드에 공개되는 식별값입니다. 비밀키가 아니며, 접근 통제는 Firestore 보안 규칙과 Functions 검증이 맡습니다. 저장소가 공개되어 있으므로 Google Cloud 콘솔에서 키를 제한해 두는 것을 권장합니다: API 및 서비스 → 사용자 인증 정보 → Browser key → 웹사이트 제한에 `dk-brain-arena.web.app/*`, `dk-brain-arena.firebaseapp.com/*` 추가.
 
 ### 배포 전에 Firebase 콘솔에서 할 일 (아직 하지 않음)
-1. ~~**Firestore 데이터베이스 만들기**~~ — 완료(2026-11-22). `(default)`, 네이티브 모드, Standard, `asia-northeast3`. 프로젝트 규칙(`firestore.rules`)은 배포 시 적용됩니다.
+1. ~~**Firestore 데이터베이스 만들기**~~ — 완료(2026-11-22). `(default)`, 네이티브 모드, Standard, `asia-northeast3`. 보안 규칙 `firestore.rules`는 2026-11-22에 배포함(`firebase deploy --only firestore:rules --project prod`). 규칙을 바꾸면 같은 명령으로 다시 배포합니다.
 2. **Authentication 시작 → 로그인 방법**에서 `이메일/비밀번호`와 `익명`을 사용 설정합니다.
 3. **Blaze(종량제) 요금제로 전환합니다.** Cloud Functions 배포에 필요합니다. Functions 리전은 `asia-northeast3`, 런타임은 `nodejs22`입니다.
 4. 운영 진행자 계정 정책을 정합니다. 현재 진행자 화면은 누구나 이메일 계정을 만들어 방을 열 수 있습니다. 운영에서 진행자를 제한할지는 후속 결정 사항입니다.
