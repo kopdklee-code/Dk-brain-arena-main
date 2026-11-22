@@ -130,6 +130,10 @@ npm run test:reconnect
 - 이 컬렉션은 보안 규칙으로 브라우저에서 읽기·쓰기가 모두 막혀 있어, 스스로 진행자로 등록할 수 없습니다.
 - 진행자 권한은 자기가 만든 방에만 적용됩니다. 승인 목록은 "방을 만들 수 있는 사람"만 정하며, 플랫폼 전체 관리자 화면은 없습니다.
 
+### 배포 현황
+- 2026-11-22: Firestore 보안 규칙, **Hosting**(https://dk-brain-arena.web.app) 배포함.
+- **Functions는 미배포**(Blaze 요금제 필요). 그 전까지 운영 사이트에서 방 만들기·입장·진행은 동작하지 않습니다.
+
 ### 배포 명령 (위 준비 후, Node 22를 적용한 창에서)
 ```powershell
 firebase deploy --project prod
