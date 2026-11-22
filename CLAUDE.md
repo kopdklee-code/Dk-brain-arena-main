@@ -13,6 +13,7 @@
 - `rules.js`는 순수 함수(createGame·executeAction·getView·getResult·normalizeConfig). DOM·Firebase·네트워크·저장소·시간·난수 직접 사용 금지.
 - `view.js`는 상태 표시와 입력 전달만. Firebase·로그인을 모름.
 - 플랫폼 방 상태(lobby/playing/finished)와 게임 내부 단계는 분리. 게임별 라운드·점수 공식을 공통 코드에 넣지 않음.
+- 진행자 = Google 로그인 + 관리자 승인 목록 `hostAccounts/{소문자 이메일}`(enabled !== false, 콘솔 관리, 클라이언트 접근 금지). createRoom 에서 서버가 검증. 에뮬레이터만 이메일/비밀번호 허용. 참가자 = 익명. 관리자 이메일 등 개인정보는 공개 저장소에 기록하지 않음.
 - 모든 쓰기는 Cloud Functions가 판정(UID·방 소유자·참가자·단계·입력 검증, requestId + 트랜잭션). Firestore 규칙은 클라이언트 쓰기 전면 금지.
 - 문서 분리: `rooms/{id}` 공개 · `players/{uid}` 참가자 · `private/{uid}` 본인만 · `server/*`, `requests/*`, `codes/*` 서버 전용.
 - 로컬 주소에서는 에뮬레이터만 사용(프로젝트 ID `demo-dk-brain-arena`). 실서비스로 자동 연결 금지.

@@ -10,6 +10,7 @@
     "build:functions": "node scripts/build.mjs functions",
     "build:packages": "node scripts/build.mjs packages",
     "emulators": "node scripts/build.mjs all && firebase emulators:start --project demo-dk-brain-arena",
+    "emulator:approve-host": "node scripts/emulator-approve-host.mjs",
     "test:rules": "node --test tests/rules.test.mjs tests/firebase-env.test.mjs",
     "test:emulator": "node scripts/build.mjs all && firebase emulators:exec --project demo-dk-brain-arena \"node --test --test-concurrency=1 tests/emulator.test.mjs\"",
     "test:e2e": "node scripts/build.mjs all && firebase emulators:exec --project demo-dk-brain-arena \"node tests/e2e-browser.mjs\"",

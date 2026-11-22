@@ -26,11 +26,27 @@ function requireAuth(request) {
   return uid;
 }
 
-function requireHostAccount(request) {
+// 진행자 = Google 로그인 + 관리자가 승인한 계정 (hostAccounts/{소문자 이메일}, enabled !== false).
+// 승인 목록은 관리자가 Firebase 콘솔에서 관리하며 클라이언트는 읽기·쓰기 모두 불가(보안 규칙).
+// 에뮬레이터에서는 자동 검증용으로 이메일/비밀번호 계정도 허용하되, 승인 목록 검사는 똑같이 적용한다.
+const IS_EMULATOR = process.env.FUNCTIONS_EMULATOR === 'true';
+const HOST_PROVIDERS = IS_EMULATOR ? ['google.com', 'password'] : ['google.com'];
+
+async function requireApprovedHost(request) {
   const uid = requireAuth(request);
-  const provider = request.auth.token?.firebase?.sign_in_provider;
-  if (!provider || provider === 'anonymous') {
-    throw new HttpsError('permission-denied', '진행자 계정으로 로그인해야 방을 만들 수 있습니다.');
+  const token = request.auth.token || {};
+  const provider = token.firebase?.sign_in_provider;
+  if (!HOST_PROVIDERS.includes(provider)) {
+    throw new HttpsError('permission-denied', '진행자는 Google 계정으로 로그인해야 방을 만들 수 있습니다.');
+  }
+  const email = typeof token.email === 'string' ? token.email.trim().toLowerCase() : '';
+  if (!email) throw new HttpsError('permission-denied', '이메일이 있는 계정으로 로그인해야 합니다.');
+  if (provider === 'google.com' && token.email_verified !== true) {
+    throw new HttpsError('permission-denied', '이메일 인증이 완료된 Google 계정이 필요합니다.');
+  }
+  const approval = await db.collection('hostAccounts').doc(email).get();
+  if (!approval.exists || approval.data().enabled === false) {
+    throw new HttpsError('permission-denied', `진행자 승인이 필요합니다. 관리자에게 ${email} 계정의 진행자 등록을 요청하세요.`);
   }
   return uid;
 }
@@ -113,7 +129,7 @@ async function idempotent(roomId, requestId, uid, handler) {
 
 // ── 진행자: 방 생성 ───────────────────────────────────────
 export const createRoom = onCall(async (request) => {
-  const uid = requireHostAccount(request);
+  const uid = await requireApprovedHost(request);
   const game = getGame(request.data?.gameId);
   if (!game) throw new HttpsError('invalid-argument', '등록되지 않은 게임입니다.');
   const normalized = game.rules.normalizeConfig(request.data?.config || {});

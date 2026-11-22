@@ -22,14 +22,46 @@ function authMessage(err) {
     'auth/email-already-in-use': '이미 있는 계정입니다. 로그인하세요.',
     'auth/weak-password': '비밀번호는 6자 이상이어야 합니다.',
     'auth/invalid-email': '이메일 형식이 올바르지 않습니다.',
+    'auth/popup-closed-by-user': '로그인 창이 닫혔습니다. 다시 시도하세요.',
+    'auth/cancelled-popup-request': '로그인 창이 닫혔습니다. 다시 시도하세요.',
+    'auth/popup-blocked': '브라우저가 로그인 창을 차단했습니다. 팝업을 허용한 뒤 다시 시도하세요.',
+    'auth/operation-not-allowed': 'Firebase 콘솔에서 Google 로그인 제공자가 사용 설정되어 있지 않습니다.',
+    'auth/unauthorized-domain': '이 주소는 Firebase Authentication 승인 도메인이 아닙니다.',
   };
   return map[err.code] || describeError(err);
 }
 
 function renderLogin(errorText = '') {
+  const status = el('div', { 'aria-live': 'polite' }, errorText ? message(errorText, 'error') : null);
+  const googleBtn = el('button', {
+    class: 'dk-btn', type: 'button', 'data-action': 'google-sign-in', text: 'Google로 로그인',
+    onclick: async () => {
+      googleBtn.disabled = true;
+      status.replaceChildren(message('… Google 로그인 창에서 계정을 선택하세요'));
+      try {
+        const cred = await hostAuth.signInWithGoogle(services.auth);
+        user = cred.user;
+        afterLogin();
+      } catch (err) {
+        googleBtn.disabled = false;
+        status.replaceChildren(message(`실패: ${authMessage(err)}`, 'error'));
+      }
+    },
+  });
+  root.replaceChildren(el('section', { class: 'dk-card dk-main--narrow' }, [
+    el('h1', { text: '진행자 로그인' }),
+    el('p', { text: '진행자는 Google 계정으로 로그인합니다. 관리자가 승인한 계정만 방을 만들 수 있습니다.' }),
+    el('div', { class: 'dk-actions' }, [googleBtn]),
+    status,
+    services.mode === 'emulator' ? emulatorTestLogin(status) : null,
+  ]));
+  googleBtn.focus();
+}
+
+/** 에뮬레이터 전용: 자동 검증용 이메일 테스트 계정 (운영 화면에는 표시하지 않음, 승인 목록 검사는 동일) */
+function emulatorTestLogin(status) {
   const email = el('input', { id: 'host-email', type: 'email', autocomplete: 'username', required: true });
   const password = el('input', { id: 'host-password', type: 'password', autocomplete: 'current-password', required: true, minlength: '6' });
-  const status = el('div', { 'aria-live': 'polite' }, errorText ? message(errorText, 'error') : null);
   const signInBtn = el('button', { class: 'dk-btn', type: 'submit', 'data-action': 'sign-in', text: '로그인' });
   const signUpBtn = el('button', { class: 'dk-btn dk-btn--ghost', type: 'button', 'data-action': 'sign-up', text: '계정 만들기' });
 
@@ -53,20 +85,16 @@ function renderLogin(errorText = '') {
   }
 
   const form = el('form', { class: 'dk-form', onsubmit: (e) => { e.preventDefault(); run('in'); } }, [
-    el('div', { class: 'dk-field' }, [el('label', { for: 'host-email', text: '진행자 이메일' }), email]),
+    el('div', { class: 'dk-field' }, [el('label', { for: 'host-email', text: '테스트 이메일' }), email]),
     el('div', { class: 'dk-field' }, [el('label', { for: 'host-password', text: '비밀번호' }), password]),
     el('div', { class: 'dk-actions' }, [signInBtn, signUpBtn]),
-    status,
   ]);
   signUpBtn.addEventListener('click', () => run('up'));
-  root.replaceChildren(el('section', { class: 'dk-card dk-main--narrow' }, [
-    el('h1', { text: '진행자 로그인' }),
-    services.mode === 'emulator'
-      ? el('p', { class: 'dk-muted', text: '로컬 에뮬레이터 모드입니다. 여기서 만든 계정은 에뮬레이터 안에만 존재하며 실서비스 계정이 아닙니다. (README의 테스트 계정 생성 방법 참고)' })
-      : null,
+  return el('details', { class: 'dk-form', 'data-emulator-login': true }, [
+    el('summary', { text: '에뮬레이터 테스트 계정 (로컬 전용)' }),
+    el('p', { class: 'dk-muted', text: '로컬 에뮬레이터 안에만 존재하는 계정입니다. 방을 만들려면 이 이메일도 에뮬레이터의 hostAccounts 승인 목록에 있어야 합니다 (README 참고).' }),
     form,
-  ]));
-  email.focus();
+  ]);
 }
 
 function accountBar() {

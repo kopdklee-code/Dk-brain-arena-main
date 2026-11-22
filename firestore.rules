@@ -9,6 +9,7 @@ rules_version = '2';
 //   rooms/{roomId}/server/{doc}       서버 전용 상태 (읽기·쓰기 모두 금지)
 //   rooms/{roomId}/requests/{id}      요청 식별자 기록 (서버 전용)
 //   codes/{code}                      입장 코드 → 방 ID (서버 전용, 열거 방지)
+//   hostAccounts/{email}              진행자 승인 목록 (관리자가 콘솔에서 관리, 클라이언트 접근 금지)
 service cloud.firestore {
   match /databases/{database}/documents {
     function signedIn() { return request.auth != null; }
@@ -34,6 +35,11 @@ service cloud.firestore {
     }
 
     match /codes/{code} {
+      allow read, write: if false;
+    }
+
+    // 진행자 승인 목록 (관리자가 Firebase 콘솔에서 관리, Functions 만 읽음)
+    match /hostAccounts/{email} {
       allow read, write: if false;
     }
 

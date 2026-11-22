@@ -8,6 +8,7 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import { SEQUENCES, runLocal } from './fixtures/sequences.mjs';
 import * as rules from '../src/games/demo-number-choice/rules.js';
+import { approveHostInEmulator } from '../scripts/emulator-approve-host.mjs';
 
 const BASE = process.env.DKBA_BASE_URL || 'http://127.0.0.1:5000';
 const ART = path.resolve('tests/.artifacts');
@@ -58,10 +59,30 @@ async function main() {
     await host.page.locator('a', { hasText: '진행자로 방 만들기' }).click();
     log('home/list/detail OK');
 
-    // 진행자 계정 생성 (에뮬레이터 전용 테스트 계정)
-    await host.page.locator('#host-email').fill(`e2e-host-${randomUUID().slice(0, 8)}@example.test`);
-    await host.page.locator('#host-password').fill(`test-${randomUUID()}`);
-    await host.page.locator('[data-action="sign-up"]').click();
+    // 진행자 Google 로그인 (Auth 에뮬레이터의 Google 로그인 창 사용, 에뮬레이터 전용 가상 계정)
+    const hostEmail = `e2e-host-${randomUUID().slice(0, 8)}@example.test`;
+    const [popup] = await Promise.all([
+      host.page.waitForEvent('popup'),
+      host.page.locator('[data-action="google-sign-in"]').click(),
+    ]);
+    await popup.waitForLoadState('load');
+    await popup.locator('#add-account-button').waitFor({ state: 'visible' });
+    for (let i = 0; i < 5 && !(await popup.locator('#email-input').isVisible()); i += 1) {
+      await popup.locator('#add-account-button').click(); // 위젯 스크립트 준비 전 클릭 대비
+      await popup.waitForTimeout(300);
+    }
+    await popup.locator('#email-input').fill(hostEmail);
+    await popup.locator('#display-name-input').fill('E2E 진행자');
+    await popup.locator('#sign-in').click();
+    await host.page.locator('[data-action="create-room"]').waitFor();
+    assert.match(await host.page.locator('.dk-status').first().innerText(), new RegExp(hostEmail));
+    log('google sign-in OK');
+    // 승인 전: 방 만들기 거부 + 승인 요청 안내
+    await host.page.locator('[data-action="create-room"]').click();
+    await host.page.locator('.dk-message--error', { hasText: '진행자 승인이 필요합니다' }).waitFor();
+    log('unapproved host rejected');
+    // 관리자가 승인 목록에 추가한 뒤 다시 시도
+    await approveHostInEmulator(hostEmail);
     await host.page.locator('[data-action="create-room"]').click();
     await host.page.locator('[data-room-code]').filter({ hasNotText: '------' }).waitFor();
     const code = (await host.page.locator('[data-room-code]').innerText()).trim();
@@ -150,8 +171,10 @@ async function main() {
       console.log('[e2e] 브라우저 콘솔 오류:\n' + relevant.join('\n'));
     }
     // 의도적으로 거부된 요청(늦은 입장)은 콘솔에 오류로 남을 수 있으므로 그 외 오류만 실패 처리
-    // 허용: 'late' 컨텍스트의 joinRoom 400 응답(시작 이후 입장 거부 — 의도된 결과)만
-    const unexpected = relevant.filter((e) => !(e.startsWith('late:') && (/HTTP 400 .*\/joinRoom$/.test(e) || /status of 400/.test(e))));
+    // 허용(의도된 거부만): 'late' 의 joinRoom 400(시작 이후 입장 거부), 'host' 의 createRoom 403(승인 전 진행자) 각 1건
+    const intended = (e) => (e.startsWith('late:') && (/HTTP 400 .*\/joinRoom$/.test(e) || /status of 400/.test(e)))
+      || (e.startsWith('host:') && (/HTTP 403 .*\/createRoom$/.test(e) || /status of 403/.test(e)));
+    const unexpected = relevant.filter((e) => !intended(e));
     assert.equal(unexpected.length, 0, `예상치 못한 콘솔 오류: ${unexpected.join('\n')}`);
     log('PASS 온라인 E2E');
   } finally {

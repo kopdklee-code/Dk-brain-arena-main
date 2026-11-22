@@ -4,7 +4,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { initializeApp, deleteApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator, signInAnonymously, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth, connectAuthEmulator, signInAnonymously, createUserWithEmailAndPassword, signInWithCredential, GoogleAuthProvider } from 'firebase/auth';
+import { approveHostInEmulator } from '../scripts/emulator-approve-host.mjs';
 import { getFirestore, connectFirestoreEmulator, doc, getDoc, setDoc, updateDoc, deleteDoc, collection, getDocs } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions';
 import * as rules from '../src/games/demo-number-choice/rules.js';
@@ -15,7 +16,8 @@ const REGION = 'asia-northeast3';
 const GAME = 'demo-number-choice';
 const apps = [];
 
-async function client(kind) {
+// kind: 'host'(승인된 이메일 테스트 계정) | 'unapproved-host' | 'google'(opts.email, opts.verified, opts.approve) | 'player' | 'signed-out'
+async function client(kind, opts = {}) {
   const app = initializeApp({ apiKey: 'demo-api-key', projectId: PROJECT, appId: '1:0:web:test' }, `${kind}-${randomUUID()}`);
   apps.push(app);
   const auth = getAuth(app);
@@ -24,9 +26,17 @@ async function client(kind) {
   connectFirestoreEmulator(db, '127.0.0.1', 8080);
   const fns = getFunctions(app, REGION);
   connectFunctionsEmulator(fns, '127.0.0.1', 5001);
-  if (kind === 'host') {
-    // 에뮬레이터 전용 테스트 계정 (실행마다 새로 생성)
-    await createUserWithEmailAndPassword(auth, `host-${randomUUID().slice(0, 8)}@example.test`, `test-${randomUUID()}`);
+  if (kind === 'host' || kind === 'unapproved-host') {
+    // 에뮬레이터 전용 테스트 계정 (실행마다 새로 생성). 'host' 는 승인 목록에도 추가
+    const email = `host-${randomUUID().slice(0, 8)}@example.test`;
+    if (kind === 'host') await approveHostInEmulator(email);
+    await createUserWithEmailAndPassword(auth, email, `test-${randomUUID()}`);
+  } else if (kind === 'google') {
+    // 에뮬레이터는 서명 없는 Google ID 토큰(JSON)을 받아 google.com 제공자로 로그인시킨다
+    const email = opts.email || `g-${randomUUID().slice(0, 8)}@example.test`;
+    if (opts.approve) await approveHostInEmulator(email, { enabled: opts.enabled ?? true });
+    const idToken = JSON.stringify({ sub: `google-${randomUUID()}`, email, email_verified: opts.verified ?? true });
+    await signInWithCredential(auth, GoogleAuthProvider.credential(idToken));
   } else if (kind !== 'signed-out') {
     await signInAnonymously(auth);
   }
@@ -67,6 +77,35 @@ async function roomDoc(c, roomId) {
 
 test.after(async () => {
   await Promise.all(apps.map((a) => deleteApp(a).catch(() => {})));
+});
+
+test('0) 진행자 승인: Google 로그인 + 승인 목록(hostAccounts)만 방 생성 가능', async () => {
+  // 승인된 Google 계정 (이메일 대소문자 무관)
+  const tag = randomUUID().slice(0, 8);
+  const approved = await client('google', { email: `Admin-${tag}@Example.test`, approve: true });
+  assert.equal(approved.auth.currentUser.providerData[0].providerId, 'google.com');
+  const room = await approved.call('createRoom', { gameId: GAME });
+  assert.match(room.code, /^[A-Z2-9]{6}$/);
+  // 승인되지 않은 Google 계정
+  const stranger = await client('google', { approve: false });
+  await expectCallError(stranger.call('createRoom', { gameId: GAME }), 'permission-denied');
+  // 승인 해제(enabled:false)
+  const disabled = await client('google', { approve: true, enabled: false });
+  await expectCallError(disabled.call('createRoom', { gameId: GAME }), 'permission-denied');
+  // 이메일 미인증 Google 계정
+  const unverified = await client('google', { approve: true, verified: false });
+  await expectCallError(unverified.call('createRoom', { gameId: GAME }), 'permission-denied');
+  // 승인되지 않은 이메일 테스트 계정·익명 사용자
+  const unapproved = await client('unapproved-host');
+  await expectCallError(unapproved.call('createRoom', { gameId: GAME }), 'permission-denied');
+  const anon = await client('player');
+  await expectCallError(anon.call('createRoom', { gameId: GAME }), 'permission-denied');
+  // 거부 메시지에 승인 요청 안내
+  await assert.rejects(stranger.call('createRoom', { gameId: GAME }), /진행자 승인이 필요합니다/);
+  // 승인 목록은 클라이언트가 읽거나 스스로 등록할 수 없음
+  await expectDenied(getDoc(doc(stranger.db, 'hostAccounts', 'anyone@example.test')));
+  await expectDenied(getDocs(collection(approved.db, 'hostAccounts')));
+  await expectDenied(setDoc(doc(stranger.db, 'hostAccounts', stranger.auth.currentUser.email), { enabled: true }));
 });
 
 test('1) 진행자·참가자 2명: 방 생성 → 참가 → 3라운드 → 결과', async () => {

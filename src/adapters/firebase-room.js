@@ -3,7 +3,7 @@
 import { initializeApp } from 'firebase/app';
 import {
   getAuth, connectAuthEmulator, onAuthStateChanged, signInAnonymously,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut,
+  signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, signInWithPopup, GoogleAuthProvider,
 } from 'firebase/auth';
 import { getFirestore, connectFirestoreEmulator, doc, collection, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { getFunctions, connectFunctionsEmulator, httpsCallable } from 'firebase/functions';
@@ -50,6 +50,9 @@ export async function ensureAnonymousUser(auth) {
 }
 
 export const hostAuth = {
+  /** 진행자 로그인 (운영·에뮬레이터 공통). 진행자 권한은 서버가 승인 목록으로 판정한다. */
+  signInWithGoogle: (auth) => signInWithPopup(auth, new GoogleAuthProvider()),
+  /** 에뮬레이터 자동 검증 전용 (운영 화면에는 표시하지 않음) */
   signIn: (auth, email, password) => signInWithEmailAndPassword(auth, email, password),
   signUp: (auth, email, password) => createUserWithEmailAndPassword(auth, email, password),
   signOut: (auth) => signOut(auth),

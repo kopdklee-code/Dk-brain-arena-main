@@ -13,6 +13,7 @@ import { randomUUID } from 'node:crypto';
 import path from 'node:path';
 import { SEQUENCES, runLocal } from './fixtures/sequences.mjs';
 import * as rules from '../src/games/demo-number-choice/rules.js';
+import { approveHostInEmulator } from '../scripts/emulator-approve-host.mjs';
 
 const BASE = process.env.DKBA_BASE_URL || 'http://127.0.0.1:5000';
 const CHANNEL = process.env.DKBA_BROWSER_CHANNEL || 'msedge';
@@ -42,7 +43,11 @@ async function main() {
     const p2 = await newPage(browser, { width: 390, height: 844 });
 
     await host.page.goto(`${BASE}/host.html`);
-    await host.page.locator('#host-email').fill(`reconnect-host-${randomUUID().slice(0, 8)}@example.test`);
+    // 에뮬레이터 테스트 계정(승인 목록에 추가) — Google 로그인 흐름은 e2e-browser.mjs 에서 검증
+    const hostEmail = `reconnect-host-${randomUUID().slice(0, 8)}@example.test`;
+    await approveHostInEmulator(hostEmail);
+    await host.page.locator('[data-emulator-login] summary').click();
+    await host.page.locator('#host-email').fill(hostEmail);
     await host.page.locator('#host-password').fill(`test-${randomUUID()}`);
     await host.page.locator('[data-action="sign-up"]').click();
     await host.page.locator('[data-action="create-room"]').click();
@@ -103,13 +108,18 @@ async function main() {
 
     // ── 2라운드: 서버는 접수했지만 응답 유실 ──
     let serverReply = null;
+    let responseDropped;
+    const dropped = new Promise((resolve) => { responseDropped = resolve; });
     await p2.page.route('**/gameAction', async (route) => {
       const res = await route.fetch(); // 요청은 실제로 서버에 도달
       serverReply = { status: res.status(), body: await res.text() };
       await route.abort('connectionreset'); // 응답만 브라우저에 전달하지 않음
+      responseDropped();
     });
     await p2.page.locator('.g-dnc__choice[data-choice="3"]').click();
     await p2.page.locator('.g-dnc__mine', { hasText: '제출 완료: 3' }).waitFor({ timeout: 30000 });
+    // 서버 상태(Firestore)가 응답 차단보다 먼저 도착할 수 있으므로, 차단이 끝난 뒤 가로채기를 해제
+    await dropped;
     await p2.page.unroute('**/gameAction');
     check('D1 서버가 실제로 접수함 (응답만 유실)', serverReply?.status === 200 && serverReply.body.includes('"ok":true'), serverReply?.body);
     await p2.page.waitForTimeout(1000);

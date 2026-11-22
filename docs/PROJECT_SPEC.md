@@ -19,7 +19,7 @@
 | 항목 | 적용값 | 비고 |
 |---|---|---|
 | 데이터베이스 | Cloud Firestore | Realtime Database 미도입 (함께 도입하지 않음) |
-| 사용자 식별 | Firebase Authentication | 진행자: 이메일/비밀번호, 참가자: 익명 인증 |
+| 사용자 식별 | Firebase Authentication | 진행자: **Google 로그인 + 관리자 승인 목록(`hostAccounts`)** (사용자 결정, 에뮬레이터에서는 검증용 이메일/비밀번호도 허용), 참가자: 익명 인증 |
 | 서버 판정 | Cloud Functions (JavaScript, 2세대 callable) | 리전 `asia-northeast3`(서울), 런타임 `nodejs22` (목표 Node 22: functions engines·firebase.json·.nvmrc 일치, Node 22.23.5로 검증) |
 | 유료 파일 보관·다운로드 | 후속 단계: Cloud Storage + 구매 권한 검증 | 이번 미구현 |
 | 로컬 프로젝트 ID | `demo-dk-brain-arena` | `demo-` 접두어 → 에뮬레이터 전용, 실서비스 접근 불가 |
@@ -85,6 +85,7 @@ firestore.rules              클라이언트 쓰기 전면 금지, 문서 단위
 | `rooms/{roomId}/server/state` | 전체 게임 상태, UID→자리 | 금지 | 금지 |
 | `rooms/{roomId}/requests/{requestId}` | 처리된 요청과 응답 | 금지 | 금지 |
 | `codes/{code}` | 입장 코드 → roomId | 금지 | 금지 |
+| `hostAccounts/{소문자 이메일}` | 진행자 승인 (`enabled`, 선택 `role`·`note`). 관리자가 콘솔에서 관리 | 금지 | 금지 |
 
 모든 쓰기는 Functions(관리자 SDK)가 트랜잭션 안에서 수행합니다.
 
