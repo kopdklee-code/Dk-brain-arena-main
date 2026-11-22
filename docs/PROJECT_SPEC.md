@@ -107,7 +107,7 @@ firestore.rules              클라이언트 쓰기 전면 금지, 문서 단위
 
 ## 5. 후속 범위 (이번 미구현)
 - 첫 상용 게임 선정과 구현
-- 운영 Firebase 배포 (프로젝트 `dk-brain-arena` 연결 완료. 배포 전 Firestore 생성, Auth 제공자 사용 설정, Blaze 요금제 필요)
+- 운영 Firebase 배포 (프로젝트 `dk-brain-arena` 연결 완료. Firestore `(default)` asia-northeast3 생성됨. 배포 전 Auth 제공자 사용 설정, Blaze 요금제 필요)
 - 결제·구매 권한 검증, Cloud Storage 유료 파일 보관·다운로드
 - 구매자 Firebase 설치형 패키지 (Hosting + Functions + 규칙 + 설정 + 안내)
 - 구독, 토너먼트, 기관 관리, AI 분석, 자체 게임 편집기

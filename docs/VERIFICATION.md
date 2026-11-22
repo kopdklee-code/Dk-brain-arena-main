@@ -23,7 +23,7 @@
 | CLI 로그인과 프로젝트 접근 | `projects:list`에서 `dk-brain-arena` / `565207270396` 확인. 기본 리소스 위치는 미지정 |
 | 웹 앱 | 기존 웹 앱 `Dk brain arena` (`1:565207270396:web:be7dcdbb220423ec38a879`)의 SDK 설정을 `apps:sdkconfig`로 받아 `PRODUCTION_CONFIG`에 넣음. 새 앱은 만들지 않음 |
 | Hosting 사이트 | `dk-brain-arena` → https://dk-brain-arena.web.app 존재 |
-| Cloud Firestore | **아직 없음**. `firestore:databases:list`가 403 반환(Cloud Firestore API 미사용). 콘솔에서 데이터베이스 생성 필요 |
+| Cloud Firestore | 처음 조회 때는 없음(403). 사용자가 콘솔에서 만든 뒤 다시 조회: `(default)` 데이터베이스, FIRESTORE_NATIVE, STANDARD 버전, 위치 `asia-northeast3`, 생성 2026-11-22 03:17 UTC (`firestore:databases:get`). 삭제 보호·PITR은 꺼져 있음. 현재 적용된 보안 규칙 내용과 `firestore.rules` 배포는 확인하지 않음 |
 | Authentication 제공자, 요금제(Blaze) | CLI로 확인하지 않음(**미확인**). 콘솔에서 확인 필요 |
 
 ### 로컬 검증 (운영 설정 추가 후) — `npm run verify` 종료 코드 0
