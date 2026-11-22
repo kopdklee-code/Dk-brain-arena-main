@@ -138,7 +138,9 @@ async function boot() {
     return;
   }
   const saved = loadSaved();
-  if (!saved) {
+  // QR·링크로 다른 방 코드를 받아 온 경우: 이전 방 자동 재접속 대신 새 방 입장 화면 (이전 기록은 입장 성공 시 덮어씀)
+  const linkedCode = (param('code') || '').trim().toUpperCase();
+  if (!saved || (linkedCode && linkedCode !== String(saved.code).toUpperCase())) {
     renderJoin();
     return;
   }

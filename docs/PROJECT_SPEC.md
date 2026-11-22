@@ -28,6 +28,7 @@
 | 브라우저 검증 도구 | playwright-core 1.65.1 + 설치된 Edge | 브라우저 다운로드 없음 |
 | ZIP 생성 | 자체 작성(`scripts/lib/zip.mjs`, Node zlib) | 추가 의존성 없음 |
 | 입장 코드 | 6자리, 모호 문자(0·O·1·I) 제외 32자 알파벳 | 서버에서 난수 생성, 충돌 시 재시도 |
+| 참가 QR | qrcode-generator 2.0.4 (MIT, 의존성 없음), 오류 정정 M, SVG | 주소 `play.html?code=코드`를 브라우저 안에서 그림(외부 서비스 호출 없음). 진행자·공개 화면의 대기실에서만 표시. 테스트 해독은 jsqr 1.4.0(개발용) |
 | 닉네임 | 1~12자, 방 안에서 중복 불가 | 재접속 시 기존 닉네임 유지 |
 | 진행자 참가 | 같은 방에 참가자로 입장 불가 | |
 | 결과 내보내기(오프라인) | CSV(UTF-8 BOM) | |
@@ -49,7 +50,7 @@ src/
   adapters/
     local-session.js         로컬 실행 연결부 (규칙을 브라우저 안에서 실행)
     firebase-room.js         온라인 연결부 (Functions 호출 + Firestore 구독)
-  platform/                  홈·상세·진행자·참가자·공개 화면, 공통 CSS
+  platform/                  홈·상세·진행자·참가자·공개 화면, 공통 CSS, 참가 QR(qr.js)
   standalone/                오프라인 실행형 껍데기 (shell.js, shell.css)
 functions/
   src/index.js               createRoom · joinRoom · startGame · gameAction
@@ -100,7 +101,7 @@ firestore.rules              클라이언트 쓰기 전면 금지, 문서 단위
 ## 4. 이번 범위
 1. 플랫폼 홈·게임 목록·게임 상세 (구현된 샘플만 표시)
 2. 진행자 로그인(에뮬레이터 계정)·방 생성·게임 시작·라운드 마감·결과 확인, 새로고침 복구(`?room=`)
-3. 참가자 입장 코드·닉네임 입장, 재접속 복구, 나가기(구독 해제)
+3. 참가자 입장 코드·닉네임 입장(또는 참가 QR로 코드가 채워진 입장 화면), 재접속 복구, 나가기(구독 해제)
 4. 공개 화면 (빔프로젝터용, 읽기 전용)
 5. 검증용 샘플 `demo-number-choice`
 6. 같은 원본에서 `standalone.html`과 ZIP 생성

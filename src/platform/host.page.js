@@ -3,6 +3,7 @@ import { initFirebase, waitForUser, hostAuth, createRoomApi, watchRoom, createOn
 import { getGame, listManifests } from '../games/registry.js';
 import { el, $, message, pill, param, setParams, setModeBadge, connectionNotice, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
 import { createGameArea } from './game-area.js';
+import { createJoinQr, joinUrlFor } from './qr.js';
 
 const root = $('[data-host]');
 let services;
@@ -153,7 +154,9 @@ function openRoom(roomId) {
   const notice = el('div', { 'aria-live': 'polite' });
   const startBtn = el('button', { class: 'dk-btn', type: 'button', 'data-action': 'start-game', text: '게임 시작', disabled: true });
   const gameEl = el('div', { 'data-game-area': true }, el('p', { class: 'dk-muted', text: '게임을 시작하면 이곳에 진행 화면이 표시됩니다.' }));
-  const joinUrl = new URL('play.html', location.href).href;
+  const joinLink = el('a', { href: joinUrlFor(null), target: '_blank', rel: 'noopener', 'data-join-link': true, text: joinUrlFor(null) });
+  const joinQr = createJoinQr({ size: 'md' });
+  joinQr.element.classList.add('dk-hidden'); // 코드가 정해지고 입장 가능한 동안(대기실)만 표시
   const displayUrl = new URL(`display.html?room=${encodeURIComponent(roomId)}`, location.href).href;
 
   let starting = false;
@@ -184,7 +187,8 @@ function openRoom(roomId) {
       el('p', { class: 'dk-muted', text: '입장 코드' }), codeEl,
       statusRow,
       connNotice,
-      el('p', {}, ['참가 주소: ', el('a', { href: joinUrl, target: '_blank', rel: 'noopener', text: joinUrl })]),
+      joinQr.element,
+      el('p', {}, ['참가 주소: ', joinLink]),
       el('p', {}, [el('a', { href: displayUrl, target: '_blank', rel: 'noopener', 'data-display-link': true, text: '공개 화면 열기 (빔프로젝터용)' })]),
       el('h2', { text: '참가자' }), playerCountEl, playersEl,
       el('div', { class: 'dk-actions' }, [startBtn]),
@@ -209,6 +213,10 @@ function openRoom(roomId) {
       return;
     }
     codeEl.textContent = room.code;
+    const joinUrl = joinUrlFor(room.code);
+    if (joinLink.href !== joinUrl) { joinLink.href = joinUrl; joinLink.textContent = joinUrl; }
+    joinQr.update(room.code);
+    joinQr.element.classList.toggle('dk-hidden', room.status !== 'lobby');
     playerCountEl.textContent = `${room.playerCount} / ${room.maxPlayers}명 입장 (최소 ${room.minPlayers}명)`;
     playersEl.replaceChildren(...(s.players.length
       ? s.players.map((p) => el('li', { 'data-player-id': p.playerId, text: `${p.playerId} · ${p.nickname}` }))

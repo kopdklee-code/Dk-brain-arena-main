@@ -2,6 +2,7 @@
 import { initFirebase, ensureAnonymousUser, watchRoom, describeError } from '../adapters/firebase-room.js';
 import { el, $, message, pill, param, setModeBadge, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
 import { createGameArea } from './game-area.js';
+import { createJoinQr, joinUrlFor } from './qr.js';
 
 const root = $('[data-display]');
 let stopWatch = null;
@@ -34,14 +35,16 @@ async function boot() {
   const playersEl = el('ol', { class: 'dk-list' });
   const notice = el('div', { 'aria-live': 'polite' });
   const gameEl = el('div', { 'data-game-area': true });
-  const joinUrl = new URL('play.html', location.href).href;
+  const joinText = el('p', { 'data-join-text': true, text: `참가 주소: ${joinUrlFor(null)}` });
+  const joinQr = createJoinQr({ size: 'lg' });
+  joinQr.element.classList.add('dk-hidden'); // 입장 가능한 동안(대기실)만 표시
   let gameArea = null;
 
   root.replaceChildren(
     el('section', { class: 'dk-card' }, [
       el('div', { class: 'dk-status' }, [el('span', { class: 'dk-muted', text: '입장 코드' }), statusRow]),
-      codeEl,
-      el('p', { text: `참가 주소: ${joinUrl}` }),
+      el('div', { class: 'dk-join' }, [codeEl, joinQr.element]),
+      joinText,
       notice,
     ]),
     el('section', { class: 'dk-card', 'data-lobby': true }, [el('h2', { text: '참가자' }), playersEl]),
@@ -57,6 +60,9 @@ async function boot() {
     notice.replaceChildren(s.error ? message(s.error, 'error') : '');
     if (!room) return;
     codeEl.textContent = room.code;
+    joinText.textContent = `참가 주소: ${joinUrlFor(room.code)}`;
+    joinQr.update(room.code);
+    joinQr.element.classList.toggle('dk-hidden', room.status !== 'lobby');
     playersEl.replaceChildren(...(s.players.length
       ? s.players.map((p) => el('li', { text: `${p.playerId} · ${p.nickname}` }))
       : [el('li', { class: 'dk-muted', text: '입장을 기다리는 중' })]));

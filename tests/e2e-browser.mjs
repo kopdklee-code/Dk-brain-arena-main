@@ -9,6 +9,7 @@ import path from 'node:path';
 import { SEQUENCES, runLocal } from './fixtures/sequences.mjs';
 import * as rules from '../src/games/demo-number-choice/rules.js';
 import { approveHostInEmulator } from '../scripts/emulator-approve-host.mjs';
+import jsQR from 'jsqr';
 
 const BASE = process.env.DKBA_BASE_URL || 'http://127.0.0.1:5000';
 const ART = path.resolve('tests/.artifacts');
@@ -39,6 +40,30 @@ async function pick(page, round, value) {
   await page.locator('.g-dnc__round', { hasText: `${round} / 3 라운드` }).waitFor();
   await page.locator(`.g-dnc__choice[data-choice="${value}"]`).click();
   await page.locator('.g-dnc__mine', { hasText: `제출 완료: ${value}` }).waitFor();
+}
+
+/** 화면에 그려진 참가 QR(SVG)을 캔버스로 래스터화해 실제로 해독한다. 해독된 문자열을 돌려준다. */
+async function decodeJoinQr(page) {
+  const qr = page.locator('[data-join-qr]');
+  await qr.locator('svg').waitFor({ state: 'visible' });
+  const img = await qr.locator('svg').evaluate(async (svg) => {
+    const src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`;
+    const image = new Image();
+    image.src = src;
+    await image.decode();
+    const size = 400;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(image, 0, 0, size, size);
+    return { width: size, height: size, data: Array.from(ctx.getImageData(0, 0, size, size).data) };
+  });
+  const result = jsQR(Uint8ClampedArray.from(img.data), img.width, img.height);
+  assert.ok(result, 'QR 코드 해독 실패');
+  assert.equal(result.data, await qr.getAttribute('data-join-url'), 'QR 내용과 표시 주소 불일치');
+  return result.data;
 }
 
 async function main() {
@@ -102,8 +127,23 @@ async function main() {
     await display.page.goto(`${BASE}/display.html?room=${roomId}`);
     await display.page.locator('[data-room-code]', { hasText: code }).waitFor();
 
-    // 참가자 입장
-    await join(p1.page, code, seq.names[0]);
+    // 참가 QR: 진행자·공개 화면의 QR을 실제로 해독 → 코드가 들어간 참가 주소
+    const expectedJoinUrl = `${BASE}/play.html?code=${code}`;
+    assert.equal(await decodeJoinQr(host.page), expectedJoinUrl);
+    assert.equal(await decodeJoinQr(display.page), expectedJoinUrl);
+    assert.equal(await host.page.locator('[data-join-link]').getAttribute('href'), expectedJoinUrl);
+    log('join QR decoded', expectedJoinUrl);
+    await host.page.screenshot({ path: path.join(ART, 'online-host-lobby-qr.png'), fullPage: true });
+    await display.page.screenshot({ path: path.join(ART, 'online-display-lobby-qr.png'), fullPage: true });
+
+    // 참가자 입장: 참가자1은 QR 주소로(코드 자동 입력, 닉네임만 입력), 참가자2는 코드 직접 입력
+    await p1.page.goto(expectedJoinUrl);
+    assert.equal(await p1.page.locator('#join-code').inputValue(), code, 'QR 주소로 열면 코드가 채워져야 함');
+    assert.equal(await p1.page.evaluate(() => document.activeElement?.id), 'join-nickname', '코드가 채워지면 닉네임 칸에 포커스');
+    await p1.page.locator('#join-nickname').fill(seq.names[0]);
+    await p1.page.keyboard.press('Enter');
+    await p1.page.locator('[data-seat]').waitFor();
+    log('p1 joined via QR link');
     await join(p2.page, code, seq.names[1]);
     await host.page.locator('[data-player-id="p2"]').waitFor();
     await p1.page.locator('.dk-message', { hasText: '기다리는 중' }).waitFor();
@@ -118,6 +158,10 @@ async function main() {
     await host.page.keyboard.press('Enter');
     await host.page.locator('[data-action="close-round"]').waitFor();
     log('started');
+    // 시작 후에는 입장할 수 없으므로 QR 숨김
+    await host.page.locator('[data-join-qr]').waitFor({ state: 'hidden' });
+    await display.page.locator('[data-join-qr]').waitFor({ state: 'hidden' });
+    log('join QR hidden after start');
 
     await late.page.goto(`${BASE}/play.html`);
     await late.page.locator('#join-code').fill(code);
@@ -167,6 +211,15 @@ async function main() {
     await host.page.screenshot({ path: path.join(ART, 'online-host-result.png'), fullPage: true });
     await p1.page.screenshot({ path: path.join(ART, 'online-player-result.png'), fullPage: true });
     await display.page.screenshot({ path: path.join(ART, 'online-display-result.png'), fullPage: true });
+
+    // 저장된 자리가 있어도 다른 방 코드의 QR 주소로 열면 이전 방 자동 재접속 대신 그 코드의 입장 화면
+    await p2.page.goto(`${BASE}/play.html?code=ZZZZZZ`);
+    assert.equal(await p2.page.locator('#join-code').inputValue(), 'ZZZZZZ');
+    assert.equal(await p2.page.locator('[data-seat]').count(), 0);
+    // 코드 없이 열면 기존처럼 이전 자리로 재접속
+    await p2.page.goto(`${BASE}/play.html`);
+    await p2.page.locator('[data-seat="p2"]').waitFor();
+    log('other-room QR link → join form; plain link → seat restored');
 
     // 참가자 나가기 → 입장 화면 복귀
     await p1.page.locator('[data-action="leave"]').click();
