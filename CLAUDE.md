@@ -24,7 +24,8 @@
 ## 작업 범위 기준
 - 1차 범위: 공통 흐름 + 개발 검증용 샘플 `demo-number-choice`(isDemo, 판매 게임 아님) + 오프라인 패키지 + 로컬·에뮬레이터 검증.
 - Git: 로컬 저장소 + GitHub 원격 `origin` (https://github.com/kopdklee-code/Dk-brain-arena-main, 공개 저장소). 사용자 지시에 따라 로컬 커밋을 원격에도 푸시. 작성자 정보는 이 저장소의 로컬 설정에만 있음. 기준선 커밋 `ccae531` (v0.1).
-- 범위 밖: Firebase 원격 배포, 실서비스 데이터 변경, 클라우드 프로젝트 생성·요금제 변경, 결제·구독·토너먼트·기관 관리·AI 분석·게임 편집기, 구매자 Firebase 설치형 전체 구현.
+- Firebase 프로젝트: 에뮬레이터 `demo-dk-brain-arena`(.firebaserc `default`, 모든 npm 스크립트가 명시), 운영 `dk-brain-arena`(별칭 `prod`, 번호 565207270396, 웹 앱 설정은 `src/shared/firebase-env.js`). 로컬 주소는 항상 에뮬레이터. 운영 배포(`firebase deploy --project prod`)와 운영 콘솔 설정 변경은 사용자의 명시적 지시가 있을 때만 하며, npm 스크립트에 배포 명령을 넣지 않음.
+- 범위 밖: Firebase 원격 배포(지시 전까지), 실서비스 데이터 변경, 클라우드 프로젝트 생성·요금제 변경, 결제·구독·토너먼트·기관 관리·AI 분석·게임 편집기, 구매자 Firebase 설치형 전체 구현.
 - 샘플을 상용 게임으로 확정하지 않음. 가상의 게임·구매자 수·성공 사례 표시 금지.
 - 실제 실행하지 못한 검증은 통과로 기록하지 않음 (`docs/VERIFICATION.md`).
 

@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-dk-brain-arena"
+    "default": "demo-dk-brain-arena",
+    "prod": "dk-brain-arena"
   }
 }

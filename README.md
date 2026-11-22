@@ -95,13 +95,30 @@ npm run test:reconnect
 - 제출 성공 여부는 **서버의 처리 결과와 서버 기준 문서**로만 표시합니다. 서버 응답을 받지 못하면 접수 여부를 단정하지 않고, 화면의 서버 기준 상태를 확인하도록 안내합니다.
 - 연결이 복원되면 기존 자리, 현재 라운드, 본인 제출 상태가 서버 기준으로 다시 표시됩니다. 오프라인 제출 대기열은 없으므로, 접수되지 않은 선택은 다시 해야 합니다.
 
-## 운영 배포 시 필요한 외부 설정 (이번 작업에서는 수행하지 않음)
-- Firebase 프로젝트를 만들고 `.firebaserc`의 프로젝트 ID를 바꿉니다.
-- `src/shared/firebase-env.js`의 `PRODUCTION_CONFIG`에 웹 앱 설정을 넣습니다.
-- **Cloud Functions 배포에는 Blaze(종량제) 요금제가 필요합니다.** Functions 리전은 `asia-northeast3`, 런타임은 `nodejs22`입니다.
-- Authentication에서 이메일/비밀번호와 익명 로그인 제공자를 활성화합니다.
-- `firebase deploy`를 실행하면 predeploy 단계에서 `scripts/build.mjs`가 Functions 규칙 번들과 Hosting 파일을 다시 생성합니다.
-- 운영 전에 App Check, 레이트 리밋, 오래된 방 정리 정책을 별도로 검토해야 합니다.
+## 운영 Firebase 프로젝트 연결
+| 항목 | 값 |
+|---|---|
+| 프로젝트 ID / 번호 | `dk-brain-arena` / `565207270396` |
+| `.firebaserc` 별칭 | `prod` → `dk-brain-arena` (기본값 `default`는 에뮬레이터 전용 `demo-dk-brain-arena` 그대로) |
+| 웹 앱 | `Dk brain arena` (`1:565207270396:web:be7dcdbb220423ec38a879`), 설정은 `src/shared/firebase-env.js`의 `PRODUCTION_CONFIG` |
+| Hosting 기본 주소 | https://dk-brain-arena.web.app |
+
+연결 대상은 접속 주소로 정합니다. `127.0.0.1`과 `localhost`에서는 **항상 에뮬레이터**에 연결하고, `dk-brain-arena.web.app`처럼 배포된 주소에서만 운영 프로젝트를 씁니다(`tests/firebase-env.test.mjs`로 검사). npm 스크립트에는 배포 명령이 없으며, 기본 프로젝트가 `demo-`라서 `--project prod`를 붙이지 않으면 운영 프로젝트에 배포되지 않습니다.
+
+웹 앱 설정의 `apiKey`는 브라우저 코드에 공개되는 식별값입니다. 비밀키가 아니며, 접근 통제는 Firestore 보안 규칙과 Functions 검증이 맡습니다. 저장소가 공개되어 있으므로 Google Cloud 콘솔에서 키를 제한해 두는 것을 권장합니다: API 및 서비스 → 사용자 인증 정보 → Browser key → 웹사이트 제한에 `dk-brain-arena.web.app/*`, `dk-brain-arena.firebaseapp.com/*` 추가.
+
+### 배포 전에 Firebase 콘솔에서 할 일 (아직 하지 않음)
+1. **Firestore 데이터베이스 만들기.** 현재 Cloud Firestore API가 꺼져 있습니다. 위치는 Functions 리전과 같은 `asia-northeast3 (서울)`을 권장합니다. 위치는 만든 뒤에 바꿀 수 없습니다.
+2. **Authentication 시작 → 로그인 방법**에서 `이메일/비밀번호`와 `익명`을 사용 설정합니다.
+3. **Blaze(종량제) 요금제로 전환합니다.** Cloud Functions 배포에 필요합니다. Functions 리전은 `asia-northeast3`, 런타임은 `nodejs22`입니다.
+4. 운영 진행자 계정 정책을 정합니다. 현재 진행자 화면은 누구나 이메일 계정을 만들어 방을 열 수 있습니다. 운영에서 진행자를 제한할지는 후속 결정 사항입니다.
+5. App Check, 레이트 리밋, 오래된 방 정리 정책을 검토합니다.
+
+### 배포 명령 (위 준비 후, Node 22를 적용한 창에서)
+```powershell
+firebase deploy --project prod
+```
+predeploy 단계에서 `scripts/build.mjs`가 Functions 규칙 번들과 Hosting 파일을 다시 만듭니다. 나눠서 배포하려면 `--only firestore:rules`, `--only functions`, `--only hosting`을 씁니다. 판매 패키지(`dist/packages`)는 Hosting에 배포되지 않습니다.
 
 ## 문서
 - `CLAUDE.md`: 확정 기준, 구조 원칙, 명령

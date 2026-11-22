@@ -4,10 +4,40 @@
 
 | 기록 | 커밋 | Node | 범위 |
 |---|---|---|---|
+| [기록 3](#기록-3--운영-firebase-프로젝트-연결-node-22) | 운영 프로젝트 연결 커밋 | 22.23.5 | 운영 설정 추가 후 전체 `npm run verify` 재실행, 연결 대상 검사 |
 | [기록 2](#기록-2--node-22-목표-런타임-커밋-bf57ce9) | `bf57ce9` | **22.23.5** (목표 런타임) | 전체 `npm run verify` + 연결 끊김·재연결 + 커밋 파일만으로 재빌드 |
 | [기록 1](#기록-1--node-26-v01-기준선-커밋-ccae531) | `ccae531` (v0.1 기준선) | 26.13.1 | 1차 구현 전체 `npm run verify` |
 
 로그와 스크린샷은 `tests/.artifacts/`에 있습니다(Git에는 포함하지 않음).
+
+---
+
+## 기록 3 — 운영 Firebase 프로젝트 연결 (Node 22)
+
+- 실행일: 2026-11-22. 환경은 기록 2와 같습니다(Node 22.23.5). 로그: `tests/.artifacts/verify-prodconfig.log`
+- 운영 프로젝트: `dk-brain-arena` (번호 565207270396), `.firebaserc` 별칭 `prod`
+
+### 운영 프로젝트 조회 (Firebase CLI, 읽기 전용)
+| 확인 | 결과 |
+|---|---|
+| CLI 로그인과 프로젝트 접근 | `projects:list`에서 `dk-brain-arena` / `565207270396` 확인. 기본 리소스 위치는 미지정 |
+| 웹 앱 | 기존 웹 앱 `Dk brain arena` (`1:565207270396:web:be7dcdbb220423ec38a879`)의 SDK 설정을 `apps:sdkconfig`로 받아 `PRODUCTION_CONFIG`에 넣음. 새 앱은 만들지 않음 |
+| Hosting 사이트 | `dk-brain-arena` → https://dk-brain-arena.web.app 존재 |
+| Cloud Firestore | **아직 없음**. `firestore:databases:list`가 403 반환(Cloud Firestore API 미사용). 콘솔에서 데이터베이스 생성 필요 |
+| Authentication 제공자, 요금제(Blaze) | CLI로 확인하지 않음(**미확인**). 콘솔에서 확인 필요 |
+
+### 로컬 검증 (운영 설정 추가 후) — `npm run verify` 종료 코드 0
+| 단계 | 결과 |
+|---|---|
+| 단위 테스트 (규칙 11 + 연결 대상 3) | 14/14 통과 |
+| 연결 대상 검사 (`tests/firebase-env.test.mjs`) | 로컬 주소 5종은 운영 설정이 있어도 `emulator`, `dk-brain-arena.web.app`·`.firebaseapp.com`은 `production`. `.firebaserc` 기본값은 `demo-` 프로젝트, 에뮬레이터 스크립트는 모두 `--project demo-dk-brain-arena` 명시, npm 스크립트에 배포 명령 없음 |
+| Functions 묶음, 산출물 분리, 오프라인 | 통과 |
+| 에뮬레이터 통합 7/7, 브라우저 E2E, 연결 끊김·재연결 19/19 | 통과. Functions 에뮬레이터는 `Using node@22 from host.` |
+
+### 기록 3의 미검증 (통과로 보지 않음)
+- **운영 프로젝트에서는 아무것도 실행하지 않았습니다**: 배포, 운영 Auth·Firestore 접속, 운영 데이터 쓰기 모두 하지 않음. 운영 환경에서 실제로 동작하는지는 배포 후 확인해야 합니다.
+- **로컬 E2E가 운영에 접속하지 않았다는 근거**: 다음 세 가지로 판단했습니다. ① 연결 대상 단위 테스트, ② 로컬 E2E가 `127.0.0.1`에서 실행됨, ③ 운영 프로젝트에 Auth 제공자와 Firestore가 아직 없는데도 E2E의 계정 생성과 방 진행이 성공함. 운영 Auth 사용자 목록은 실제 사용자 데이터라 직접 조회하지 않았습니다.
+- **콘솔에서만 확인 가능한 항목**: Auth 제공자 사용 설정, Blaze 요금제, API 키 제한.
 
 ---
 

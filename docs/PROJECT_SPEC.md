@@ -23,6 +23,7 @@
 | 서버 판정 | Cloud Functions (JavaScript, 2세대 callable) | 리전 `asia-northeast3`(서울), 런타임 `nodejs22` (목표 Node 22: functions engines·firebase.json·.nvmrc 일치, Node 22.23.5로 검증) |
 | 유료 파일 보관·다운로드 | 후속 단계: Cloud Storage + 구매 권한 검증 | 이번 미구현 |
 | 로컬 프로젝트 ID | `demo-dk-brain-arena` | `demo-` 접두어 → 에뮬레이터 전용, 실서비스 접근 불가 |
+| 운영 프로젝트 | `dk-brain-arena` (번호 565207270396, `.firebaserc` 별칭 `prod`) | 사용자가 생성. 웹 앱 `Dk brain arena` 설정을 `PRODUCTION_CONFIG`에 연결. 배포 주소에서만 사용 |
 | 빌드 도구 | esbuild 0.28.2 | 브라우저 번들·Functions 규칙 번들·standalone 인라인 |
 | 브라우저 검증 도구 | playwright-core 1.65.1 + 설치된 Edge | 브라우저 다운로드 없음 |
 | ZIP 생성 | 자체 작성(`scripts/lib/zip.mjs`, Node zlib) | 추가 의존성 없음 |
@@ -106,7 +107,7 @@ firestore.rules              클라이언트 쓰기 전면 금지, 문서 단위
 
 ## 5. 후속 범위 (이번 미구현)
 - 첫 상용 게임 선정과 구현
-- 운영 Firebase 프로젝트 생성·배포 (`PRODUCTION_CONFIG` 설정, Blaze 요금제 필요)
+- 운영 Firebase 배포 (프로젝트 `dk-brain-arena` 연결 완료. 배포 전 Firestore 생성, Auth 제공자 사용 설정, Blaze 요금제 필요)
 - 결제·구매 권한 검증, Cloud Storage 유료 파일 보관·다운로드
 - 구매자 Firebase 설치형 패키지 (Hosting + Functions + 규칙 + 설정 + 안내)
 - 구독, 토너먼트, 기관 관리, AI 분석, 자체 게임 편집기
