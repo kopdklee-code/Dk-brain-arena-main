@@ -60,11 +60,15 @@ export function newRequestId() {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
 }
 
+// 서버 응답을 받지 못한 경우(통신 끊김·응답 유실·서버 내부 오류). 요청이 서버에 도달했는지 알 수 없으므로
+// 성공·실패를 단정하지 않고, 서버 기준 상태(Firestore 구독)를 확인하도록 안내한다.
+export const NO_RESPONSE_MESSAGE = '서버 응답을 받지 못했습니다. 접수되지 않았을 수 있습니다. 연결이 복구되면 화면의 제출 상태(서버 기준)를 확인하고 필요하면 다시 선택하세요.';
+
 /** callable 오류를 사용자 메시지로 변환 */
 export function describeError(err) {
   if (!err) return '알 수 없는 오류';
-  if (err.code === 'functions/unavailable' || (err.code === 'functions/internal' && /fetch|network/i.test(err.message))) {
-    return '서버(Functions)에 연결하지 못했습니다. 에뮬레이터 실행 상태와 네트워크를 확인하세요.';
+  if (['functions/unavailable', 'functions/internal', 'functions/deadline-exceeded'].includes(err.code)) {
+    return NO_RESPONSE_MESSAGE;
   }
   if (err.code === 'auth/network-request-failed') {
     return '인증 서버에 연결하지 못했습니다. 에뮬레이터 실행 상태를 확인하세요.';
@@ -93,14 +97,25 @@ export function watchRoom({ db }, { roomId, uid, role }, listener) {
   const state = { room: null, players: [], privateDoc: null, connection: 'connecting', error: null };
   const unsubs = [];
   let closed = false;
-  const emit = () => { if (!closed) listener({ ...state }); };
+  let synced = false; // 마지막 공개 문서 스냅샷이 서버와 동기화된 상태인가 (fromCache === false)
+  let failed = false;
+  const browserOffline = () => globalThis.navigator?.onLine === false;
+  // 연결 상태: 브라우저 오프라인 신호 → 'offline', 서버 동기화 전 → 'connecting'/'reconnecting', 동기화됨 → 'online'.
+  // (이 값은 안내용이며, 제출 성공 여부는 서버 응답과 서버 기준 문서로만 판단한다.)
+  const refreshConnection = () => {
+    if (failed) state.connection = 'error';
+    else if (browserOffline()) state.connection = 'offline';
+    else if (synced) state.connection = 'online';
+    else state.connection = state.room ? 'reconnecting' : 'connecting';
+  };
+  const emit = () => { if (!closed) { refreshConnection(); listener({ ...state }); } };
   const onError = (err) => {
     state.error = err.code === 'permission-denied' ? '이 방을 볼 권한이 없습니다.' : (err.message || '구독 오류');
-    state.connection = 'error';
+    failed = true;
     emit();
   };
   unsubs.push(onSnapshot(doc(db, 'rooms', roomId), { includeMetadataChanges: true }, (snap) => {
-    state.connection = snap.metadata.fromCache ? 'reconnecting' : 'online';
+    synced = !snap.metadata.fromCache;
     state.room = snap.exists() ? { id: snap.id, ...snap.data() } : null;
     state.error = !snap.exists() && !snap.metadata.fromCache ? '방을 찾을 수 없습니다.' : null;
     emit();
@@ -115,8 +130,9 @@ export function watchRoom({ db }, { roomId, uid, role }, listener) {
       emit();
     }, onError));
   }
-  const onOnline = () => { state.connection = 'reconnecting'; emit(); };
-  const onOffline = () => { state.connection = 'offline'; emit(); };
+  // 브라우저 온라인 신호는 안내 갱신에만 사용 (온라인이 되어도 서버 동기화 전까지는 '재연결 중')
+  const onOnline = () => emit();
+  const onOffline = () => emit();
   globalThis.addEventListener?.('online', onOnline);
   globalThis.addEventListener?.('offline', onOffline);
   return () => {

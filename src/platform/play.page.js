@@ -1,6 +1,6 @@
 // 참가자 화면 (모바일): 입장 코드·닉네임 → 대기 → 제출 → 결과. 새로고침·재접속 시 자리 복구.
 import { initFirebase, ensureAnonymousUser, createRoomApi, watchRoom, createOnlineSession, describeError } from '../adapters/firebase-room.js';
-import { el, $, message, pill, param, setParams, setModeBadge, storage, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
+import { el, $, message, pill, param, setParams, setModeBadge, storage, connectionNotice, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
 import { createGameArea } from './game-area.js';
 
 const KEY = 'dkba.player.session';
@@ -75,6 +75,7 @@ function enterRoom(res) {
   stop();
   setParams({ code: null });
   const statusRow = el('div', { class: 'dk-status', 'aria-live': 'polite' });
+  const connNotice = el('div', { 'data-connection-notice': true, 'aria-live': 'assertive' });
   const lobbyEl = el('div', { 'aria-live': 'polite' });
   const gameEl = el('div', { 'data-game-area': true });
   const notice = el('div', { 'aria-live': 'polite' }, res.rejoined ? message('재접속되었습니다. 기존 자리와 진행 상태를 복구했습니다.') : null);
@@ -88,6 +89,7 @@ function enterRoom(res) {
     el('h1', { text: '게임 참가' }),
     el('p', { 'data-seat': res.playerId }, [`코드 ${res.code} · `, el('strong', { text: res.nickname }), ` (${res.playerId})`]),
     statusRow,
+    connNotice,
     notice,
     lobbyEl,
     gameEl,
@@ -100,6 +102,7 @@ function enterRoom(res) {
       pill(s.connection, CONNECTION_LABEL[s.connection] || s.connection),
       room ? pill(room.status, `방 상태: ${ROOM_STATUS_LABEL[room.status] || room.status}`) : null,
     );
+    connNotice.replaceChildren(connectionNotice(s.connection) || '');
     if (s.error) notice.replaceChildren(message(s.error, 'error'));
     if (!room) return;
     if (room.status === 'lobby') {

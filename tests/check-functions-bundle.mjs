@@ -8,6 +8,7 @@ import { cp, mkdtemp, readFile, readdir, stat } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { createRequire } from 'node:module';
 
 const ROOT = path.resolve('.');
 const FUNCTIONS = path.join(ROOT, 'functions');
@@ -67,6 +68,22 @@ assert.deepEqual(state.scores, { p1: 3, p2: 0 });
 process.env.GCLOUD_PROJECT ||= 'demo-dk-brain-arena';
 const index = await import(pathToFileURL(path.join(tmp, 'src', 'index.js')).href);
 for (const name of ['createRoom', 'joinRoom', 'startGame', 'gameAction']) assert.equal(typeof index[name], 'function', `${name} 누락`);
-console.log('[functions-bundle] 새 디렉터리에서 index.js·규칙 번들 import 및 판정 실행 OK');
+console.log(`[functions-bundle] 새 디렉터리에서 index.js·규칙 번들 import 및 판정 실행 OK (Node ${process.version})`);
+
+// 목표 런타임(nodejs22) 호환: firebase-admin 의 하위 의존성 중 engines 가 Node 22 를 벗어나는 모듈
+// (@firebase/database, @firebase/database-compat: >=24.12.0)이 실제로 로드되지 않는지 확인
+const loaded = Object.keys(createRequire(import.meta.url).cache).map((p) => p.replace(/\\/g, '/'));
+const nodeModulePkgs = new Set(loaded.filter((p) => p.includes('/node_modules/')).map((p) => {
+  const rest = p.split('/node_modules/').pop().split('/');
+  return rest[0].startsWith('@') ? `${rest[0]}/${rest[1]}` : rest[0];
+}));
+const lock = JSON.parse(await readFile(path.join(tmp, 'package-lock.json'), 'utf8'));
+const engineConflicts = Object.entries(lock.packages)
+  .filter(([k, v]) => k && v.engines?.node && /^>=\s*(2[3-9]|[3-9]\d)/.test(v.engines.node.trim()))
+  .map(([k, v]) => ({ name: k.split('node_modules/').pop(), range: v.engines.node }));
+const loadedConflicts = engineConflicts.filter((c) => nodeModulePkgs.has(c.name));
+console.log(`[functions-bundle] Node 22 범위를 벗어나는 engines 선언: ${engineConflicts.map((c) => `${c.name}(${c.range})`).join(', ') || '없음'}`);
+console.log(`[functions-bundle] 실제 로드된 CommonJS 패키지 ${nodeModulePkgs.size}개 중 해당 모듈: ${loadedConflicts.map((c) => c.name).join(', ') || '없음'}`);
+assert.deepEqual(loadedConflicts, [], 'Node 22 범위를 벗어나는 모듈이 실제로 로드됨');
 console.log('[functions-bundle] PASS');
 process.exit(0);

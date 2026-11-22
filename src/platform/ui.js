@@ -26,6 +26,17 @@ export const CONNECTION_LABEL = {
   error: '! 연결 오류',
 };
 
+/** 연결이 끊긴 동안 화면 본문에 보여 줄 안내 (없으면 null) */
+export function connectionNotice(connection) {
+  if (connection === 'offline') {
+    return message('연결이 끊겼습니다. 다시 연결될 때까지 선택·명령이 서버에 접수되지 않을 수 있습니다. 제출 상태는 서버가 확인한 내용만 표시됩니다.', 'error');
+  }
+  if (connection === 'reconnecting') {
+    return message('서버와 다시 연결하는 중입니다. 표시된 내용이 최신이 아닐 수 있습니다.', 'info');
+  }
+  return null;
+}
+
 export const ROOM_STATUS_LABEL = {
   lobby: '대기 중',
   playing: '진행 중',

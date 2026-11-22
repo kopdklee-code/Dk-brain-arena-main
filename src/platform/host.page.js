@@ -1,7 +1,7 @@
 // 진행자 화면: 로그인 → 방 생성 → 대기실 → 게임 시작 → 라운드 마감 → 결과
 import { initFirebase, waitForUser, hostAuth, createRoomApi, watchRoom, createOnlineSession, describeError } from '../adapters/firebase-room.js';
 import { getGame, listManifests } from '../games/registry.js';
-import { el, $, message, pill, param, setParams, setModeBadge, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
+import { el, $, message, pill, param, setParams, setModeBadge, connectionNotice, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
 import { createGameArea } from './game-area.js';
 
 const root = $('[data-host]');
@@ -119,6 +119,7 @@ function openRoom(roomId) {
   stopWatch?.();
   const codeEl = el('div', { class: 'dk-code', 'data-room-code': true, text: '------' });
   const statusRow = el('div', { class: 'dk-status', 'aria-live': 'polite' });
+  const connNotice = el('div', { 'data-connection-notice': true, 'aria-live': 'assertive' });
   const playersEl = el('ol', { class: 'dk-list', 'data-players': true });
   const playerCountEl = el('p', { class: 'dk-muted' });
   const notice = el('div', { 'aria-live': 'polite' });
@@ -154,6 +155,7 @@ function openRoom(roomId) {
       el('h1', { text: '진행자 화면' }),
       el('p', { class: 'dk-muted', text: '입장 코드' }), codeEl,
       statusRow,
+      connNotice,
       el('p', {}, ['참가 주소: ', el('a', { href: joinUrl, target: '_blank', rel: 'noopener', text: joinUrl })]),
       el('p', {}, [el('a', { href: displayUrl, target: '_blank', rel: 'noopener', 'data-display-link': true, text: '공개 화면 열기 (빔프로젝터용)' })]),
       el('h2', { text: '참가자' }), playerCountEl, playersEl,
@@ -170,6 +172,7 @@ function openRoom(roomId) {
       pill(s.connection, CONNECTION_LABEL[s.connection] || s.connection),
       room ? pill(room.status, `방 상태: ${ROOM_STATUS_LABEL[room.status] || room.status}`) : null,
     );
+    connNotice.replaceChildren(connectionNotice(s.connection) || '');
     if (s.error) notice.replaceChildren(message(s.error, 'error'));
     if (!room) return;
     if (room.hostUid !== user.uid) {

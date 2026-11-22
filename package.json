@@ -13,10 +13,11 @@
     "test:rules": "node --test tests/rules.test.mjs",
     "test:emulator": "node scripts/build.mjs all && firebase emulators:exec --project demo-dk-brain-arena \"node --test --test-concurrency=1 tests/emulator.test.mjs\"",
     "test:e2e": "node scripts/build.mjs all && firebase emulators:exec --project demo-dk-brain-arena \"node tests/e2e-browser.mjs\"",
+    "test:reconnect": "node scripts/build.mjs all && firebase emulators:exec --project demo-dk-brain-arena \"node tests/e2e-reconnect.mjs\"",
     "test:offline": "node scripts/build.mjs packages && node tests/offline-standalone.mjs",
     "check:dist": "node scripts/build.mjs all && node tests/check-dist.mjs",
     "check:functions-bundle": "node scripts/build.mjs functions && node tests/check-functions-bundle.mjs",
-    "verify": "npm run build && npm run test:rules && npm run check:functions-bundle && npm run check:dist && npm run test:offline && npm run test:emulator && npm run test:e2e"
+    "verify": "npm run build && npm run test:rules && npm run check:functions-bundle && npm run check:dist && npm run test:offline && npm run test:emulator && npm run test:e2e && npm run test:reconnect"
   },
   "devDependencies": {
     "esbuild": "0.28.2",

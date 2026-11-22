@@ -5,7 +5,10 @@ import { randomInt } from 'node:crypto';
 import { initializeApp } from 'firebase-admin/app';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { onCall, HttpsError } from 'firebase-functions/v2/https';
-import { setGlobalOptions } from 'firebase-functions/v2';
+// 'firebase-functions/v2' 묶음 모듈은 Realtime Database 제공자까지 즉시 로드하며, 그 하위 의존성
+// (@firebase/database-compat)은 Node >=24.12 를 요구한다. 목표 런타임(nodejs22)에서 쓰지 않는 모듈을
+// 불러오지 않도록 필요한 하위 경로만 import 한다.
+import { setGlobalOptions } from 'firebase-functions/v2/options';
 import {
   getGame, ROOM_STATUS, normalizeCode, normalizeNickname, isValidRequestId, sanitizeAction, CODE_ALPHABET, CODE_LENGTH,
 } from '../generated/games.js';

@@ -169,7 +169,10 @@ export function mount(root, { role, send }) {
 
   return {
     update(next) {
+      // 새 확정 상태(서버 판정 또는 로컬 규칙 결과)가 오면 이전 실패 안내를 지운다.
+      // 제출 여부는 항상 이 상태(view)로만 표시한다.
       current = next;
+      lastError = '';
       draw();
     },
     destroy() {
