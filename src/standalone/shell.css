@@ -1,0 +1,27 @@
+/* 오프라인 실행형 껍데기 스타일 (외부 폰트·CDN 없음) */
+:root {
+  --dk-bg: #f3f5f9; --dk-surface: #ffffff; --dk-text: #15192a; --dk-muted: #545b70; --dk-line: #c9cfdb;
+  --dk-accent: #2457c5; --dk-ok: #1b7f45; --dk-warn: #8a5a00; --dk-danger: #b3261e;
+  --dk-space-2: 10px; --dk-space-3: 16px; --dk-space-4: 24px; --dk-radius: 10px;
+  --dk-font-sm: 14px; --dk-font-lg: 22px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--dk-bg); color: var(--dk-text); font-family: "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; line-height: 1.5; }
+:focus-visible { outline: 3px solid var(--dk-accent); outline-offset: 2px; }
+#app { max-width: 1000px; margin: 0 auto; padding: var(--dk-space-4) var(--dk-space-3); display: grid; gap: var(--dk-space-3); }
+.sa-header { display: flex; gap: var(--dk-space-3); align-items: center; }
+.sa-header h1 { margin: 0; font-size: 26px; }
+.sa-header p { margin: 0; }
+.sa-muted { color: var(--dk-muted); font-size: var(--dk-font-sm); }
+.sa-demo { margin: 0; padding: 8px 12px; border: 2px dashed var(--dk-warn); color: var(--dk-warn); border-radius: 8px; font-weight: 700; }
+.sa-toolbar { display: flex; gap: var(--dk-space-2); flex-wrap: wrap; }
+.sa-stage { background: var(--dk-surface); border: 1px solid var(--dk-line); border-radius: var(--dk-radius); padding: var(--dk-space-4); }
+.sa-form { display: grid; gap: var(--dk-space-3); max-width: 420px; }
+.sa-form h2 { margin: 0; }
+.sa-field { display: grid; gap: 4px; }
+.sa-field label { font-weight: 600; }
+.sa-field input { font: inherit; padding: 10px 12px; border: 1px solid var(--dk-line); border-radius: 8px; min-height: 44px; }
+.sa-btn { min-height: 44px; padding: 8px 18px; border-radius: var(--dk-radius); border: 2px solid var(--dk-accent); background: var(--dk-accent); color: #fff; font: inherit; font-weight: 700; cursor: pointer; }
+.sa-btn--ghost { background: transparent; color: var(--dk-accent); }
+.sa-btn--danger { background: transparent; color: var(--dk-danger); border-color: var(--dk-danger); }
+.sa-error { margin: 0; color: var(--dk-danger); font-weight: 600; min-height: 1.5em; }

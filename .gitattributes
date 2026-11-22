@@ -1,0 +1,4 @@
+# 줄바꿈을 LF로 고정 (Windows autocrlf 차이로 생기는 변경 방지)
+* text=auto eol=lf
+*.png binary
+*.zip binary

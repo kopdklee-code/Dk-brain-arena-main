@@ -1,0 +1,11 @@
+{
+  "gameId": "demo-number-choice",
+  "title": "숫자 선택 샘플",
+  "description": "플랫폼 공통 구조와 온라인·오프라인 배포를 검증하기 위한 개발 검증용 샘플입니다. 판매 게임이 아닙니다.",
+  "gameVersion": "0.1.0",
+  "players": { "min": 2, "max": 2 },
+  "screens": ["host", "player", "display", "local"],
+  "distributions": ["platform", "offline-standalone"],
+  "isDemo": true,
+  "defaultConfig": { "totalRounds": 3 }
+}

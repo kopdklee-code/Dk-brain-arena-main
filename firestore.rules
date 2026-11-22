@@ -1,0 +1,44 @@
+rules_version = '2';
+
+// DK BRAIN ARENA — Firestore 보안 규칙
+// 모든 쓰기는 Cloud Functions(관리자 권한)가 판정 후 수행한다. 클라이언트는 읽기만 한다.
+// 문서 구분:
+//   rooms/{roomId}                    공개 상태 (로그인한 사용자 읽기)
+//   rooms/{roomId}/players/{uid}      참가자 정보: 닉네임·자리 (로그인한 사용자 읽기)
+//   rooms/{roomId}/private/{uid}      개인별 비공개 상태 (본인만 읽기)
+//   rooms/{roomId}/server/{doc}       서버 전용 상태 (읽기·쓰기 모두 금지)
+//   rooms/{roomId}/requests/{id}      요청 식별자 기록 (서버 전용)
+//   codes/{code}                      입장 코드 → 방 ID (서버 전용, 열거 방지)
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+
+    match /rooms/{roomId} {
+      allow read: if signedIn();
+      allow write: if false;
+
+      match /players/{uid} {
+        allow read: if signedIn();
+        allow write: if false;
+      }
+      match /private/{uid} {
+        allow read: if signedIn() && request.auth.uid == uid;
+        allow write: if false;
+      }
+      match /server/{docId} {
+        allow read, write: if false;
+      }
+      match /requests/{requestId} {
+        allow read, write: if false;
+      }
+    }
+
+    match /codes/{code} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

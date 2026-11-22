@@ -1,0 +1,37 @@
+{
+  "index": {
+    "page": "home",
+    "title": "홈",
+    "modeBadge": "",
+    "mainClass": "",
+    "body": "    <section class=\"dk-card\">\n      <h1>DK BRAIN ARENA</h1>\n      <p>진행자가 방을 만들고 참가자가 입장 코드로 함께하는 두뇌 게임 플랫폼입니다. 현재는 공통 구조를 검증하는 1차 구현 단계이며, 아래에는 실제로 구현된 게임만 표시합니다.</p>\n      <div class=\"dk-actions\"><a class=\"dk-btn\" href=\"host.html\">진행자로 시작</a><a class=\"dk-btn dk-btn--ghost\" href=\"play.html\">입장 코드로 참가</a></div>\n    </section>\n    <section aria-labelledby=\"games-title\" class=\"dk-form\">\n      <h2 id=\"games-title\">게임 목록</h2>\n      <div class=\"dk-grid\" data-game-list></div>\n    </section>"
+  },
+  "game": {
+    "page": "game",
+    "title": "게임 상세",
+    "modeBadge": "",
+    "mainClass": "",
+    "body": "    <section class=\"dk-card\" data-game-detail></section>"
+  },
+  "host": {
+    "page": "host",
+    "title": "진행자",
+    "modeBadge": "연결 확인 중",
+    "mainClass": "",
+    "body": "    <div data-host></div>"
+  },
+  "play": {
+    "page": "play",
+    "title": "참가하기",
+    "modeBadge": "연결 확인 중",
+    "mainClass": "dk-main--narrow",
+    "body": "    <div data-play></div>"
+  },
+  "display": {
+    "page": "display",
+    "title": "공개 화면",
+    "modeBadge": "연결 확인 중",
+    "mainClass": "dk-main--display",
+    "body": "    <div data-display class=\"dk-form\"></div>"
+  }
+}

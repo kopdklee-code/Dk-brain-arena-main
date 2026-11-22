@@ -1,0 +1,226 @@
+// 진행자 화면: 로그인 → 방 생성 → 대기실 → 게임 시작 → 라운드 마감 → 결과
+import { initFirebase, waitForUser, hostAuth, createRoomApi, watchRoom, createOnlineSession, describeError } from '../adapters/firebase-room.js';
+import { getGame, listManifests } from '../games/registry.js';
+import { el, $, message, pill, param, setParams, setModeBadge, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
+import { createGameArea } from './game-area.js';
+
+const root = $('[data-host]');
+let services;
+let api;
+let user;
+let stopWatch = null;
+
+function fatal(text) {
+  root.replaceChildren(el('section', { class: 'dk-card' }, [message(text, 'error')]));
+}
+
+function authMessage(err) {
+  const map = {
+    'auth/invalid-credential': '이메일 또는 비밀번호가 올바르지 않습니다.',
+    'auth/wrong-password': '이메일 또는 비밀번호가 올바르지 않습니다.',
+    'auth/user-not-found': '등록되지 않은 계정입니다. 먼저 계정을 만드세요.',
+    'auth/email-already-in-use': '이미 있는 계정입니다. 로그인하세요.',
+    'auth/weak-password': '비밀번호는 6자 이상이어야 합니다.',
+    'auth/invalid-email': '이메일 형식이 올바르지 않습니다.',
+  };
+  return map[err.code] || describeError(err);
+}
+
+function renderLogin(errorText = '') {
+  const email = el('input', { id: 'host-email', type: 'email', autocomplete: 'username', required: true });
+  const password = el('input', { id: 'host-password', type: 'password', autocomplete: 'current-password', required: true, minlength: '6' });
+  const status = el('div', { 'aria-live': 'polite' }, errorText ? message(errorText, 'error') : null);
+  const signInBtn = el('button', { class: 'dk-btn', type: 'submit', 'data-action': 'sign-in', text: '로그인' });
+  const signUpBtn = el('button', { class: 'dk-btn dk-btn--ghost', type: 'button', 'data-action': 'sign-up', text: '계정 만들기' });
+
+  async function run(kind) {
+    if (!email.value || password.value.length < 6) {
+      status.replaceChildren(message('이메일과 6자 이상의 비밀번호를 입력하세요.', 'error'));
+      return;
+    }
+    signInBtn.disabled = true; signUpBtn.disabled = true;
+    status.replaceChildren(message(kind === 'up' ? '… 계정 만드는 중' : '… 로그인 중'));
+    try {
+      const cred = kind === 'up'
+        ? await hostAuth.signUp(services.auth, email.value.trim(), password.value)
+        : await hostAuth.signIn(services.auth, email.value.trim(), password.value);
+      user = cred.user;
+      afterLogin();
+    } catch (err) {
+      signInBtn.disabled = false; signUpBtn.disabled = false;
+      status.replaceChildren(message(`실패: ${authMessage(err)}`, 'error'));
+    }
+  }
+
+  const form = el('form', { class: 'dk-form', onsubmit: (e) => { e.preventDefault(); run('in'); } }, [
+    el('div', { class: 'dk-field' }, [el('label', { for: 'host-email', text: '진행자 이메일' }), email]),
+    el('div', { class: 'dk-field' }, [el('label', { for: 'host-password', text: '비밀번호' }), password]),
+    el('div', { class: 'dk-actions' }, [signInBtn, signUpBtn]),
+    status,
+  ]);
+  signUpBtn.addEventListener('click', () => run('up'));
+  root.replaceChildren(el('section', { class: 'dk-card dk-main--narrow' }, [
+    el('h1', { text: '진행자 로그인' }),
+    services.mode === 'emulator'
+      ? el('p', { class: 'dk-muted', text: '로컬 에뮬레이터 모드입니다. 여기서 만든 계정은 에뮬레이터 안에만 존재하며 실서비스 계정이 아닙니다. (README의 테스트 계정 생성 방법 참고)' })
+      : null,
+    form,
+  ]));
+  email.focus();
+}
+
+function accountBar() {
+  return el('div', { class: 'dk-status' }, [
+    el('span', { text: `진행자: ${user.email || user.uid}` }),
+    el('button', {
+      class: 'dk-btn dk-btn--ghost', type: 'button', 'data-action': 'sign-out', text: '로그아웃',
+      onclick: async () => { stopWatch?.(); stopWatch = null; await hostAuth.signOut(services.auth); user = null; setParams({ room: null }); renderLogin(); },
+    }),
+  ]);
+}
+
+function afterLogin() {
+  const roomId = param('room');
+  if (roomId) openRoom(roomId);
+  else renderCreate();
+}
+
+function renderCreate(errorText = '') {
+  const manifests = listManifests();
+  const wanted = param('game');
+  const select = el('select', { id: 'game-select' }, manifests.map((m) =>
+    el('option', { value: m.gameId, selected: m.gameId === wanted, text: `${m.title}${m.isDemo ? ' (개발 검증용)' : ''}` })));
+  const status = el('div', { 'aria-live': 'polite' }, errorText ? message(errorText, 'error') : null);
+  const btn = el('button', { class: 'dk-btn', type: 'submit', 'data-action': 'create-room', text: '방 만들기' });
+  const form = el('form', {
+    class: 'dk-form',
+    onsubmit: async (e) => {
+      e.preventDefault();
+      btn.disabled = true;
+      status.replaceChildren(message('… 방 만드는 중'));
+      try {
+        const res = await api.createRoom(select.value, {});
+        setParams({ room: res.roomId, game: null });
+        openRoom(res.roomId);
+      } catch (err) {
+        btn.disabled = false;
+        status.replaceChildren(message(`실패: ${describeError(err)}`, 'error'));
+      }
+    },
+  }, [
+    el('div', { class: 'dk-field' }, [el('label', { for: 'game-select', text: '게임 선택' }), select]),
+    el('div', { class: 'dk-actions' }, [btn]),
+    status,
+  ]);
+  root.replaceChildren(el('section', { class: 'dk-card' }, [accountBar(), el('h1', { text: '새 방 만들기' }), form]));
+}
+
+function openRoom(roomId) {
+  stopWatch?.();
+  const codeEl = el('div', { class: 'dk-code', 'data-room-code': true, text: '------' });
+  const statusRow = el('div', { class: 'dk-status', 'aria-live': 'polite' });
+  const playersEl = el('ol', { class: 'dk-list', 'data-players': true });
+  const playerCountEl = el('p', { class: 'dk-muted' });
+  const notice = el('div', { 'aria-live': 'polite' });
+  const startBtn = el('button', { class: 'dk-btn', type: 'button', 'data-action': 'start-game', text: '게임 시작', disabled: true });
+  const gameEl = el('div', { 'data-game-area': true }, el('p', { class: 'dk-muted', text: '게임을 시작하면 이곳에 진행 화면이 표시됩니다.' }));
+  const joinUrl = new URL('play.html', location.href).href;
+  const displayUrl = new URL(`display.html?room=${encodeURIComponent(roomId)}`, location.href).href;
+
+  let starting = false;
+  let latest = null;
+  let gameArea = null;
+
+  startBtn.addEventListener('click', async () => {
+    if (starting) return;
+    starting = true;
+    startBtn.disabled = true;
+    startBtn.textContent = '시작 중…';
+    notice.replaceChildren();
+    try {
+      const res = await api.startGame(roomId);
+      if (!res.ok) notice.replaceChildren(message(`시작 실패: ${res.error.message}`, 'error'));
+    } catch (err) {
+      notice.replaceChildren(message(`시작 실패: ${describeError(err)}`, 'error'));
+    }
+    starting = false;
+    startBtn.textContent = '게임 시작';
+    if (latest) update(latest);
+  });
+
+  root.replaceChildren(el('div', { class: 'dk-split' }, [
+    el('section', { class: 'dk-card', 'aria-label': '방 정보' }, [
+      accountBar(),
+      el('h1', { text: '진행자 화면' }),
+      el('p', { class: 'dk-muted', text: '입장 코드' }), codeEl,
+      statusRow,
+      el('p', {}, ['참가 주소: ', el('a', { href: joinUrl, target: '_blank', rel: 'noopener', text: joinUrl })]),
+      el('p', {}, [el('a', { href: displayUrl, target: '_blank', rel: 'noopener', 'data-display-link': true, text: '공개 화면 열기 (빔프로젝터용)' })]),
+      el('h2', { text: '참가자' }), playerCountEl, playersEl,
+      el('div', { class: 'dk-actions' }, [startBtn]),
+      notice,
+    ]),
+    el('section', { class: 'dk-card', 'aria-label': '게임 진행' }, [gameEl]),
+  ]));
+
+  function update(s) {
+    latest = s;
+    const { room } = s;
+    statusRow.replaceChildren(
+      pill(s.connection, CONNECTION_LABEL[s.connection] || s.connection),
+      room ? pill(room.status, `방 상태: ${ROOM_STATUS_LABEL[room.status] || room.status}`) : null,
+    );
+    if (s.error) notice.replaceChildren(message(s.error, 'error'));
+    if (!room) return;
+    if (room.hostUid !== user.uid) {
+      notice.replaceChildren(message('이 방의 진행자가 아니므로 진행 명령을 사용할 수 없습니다.', 'error'));
+      startBtn.disabled = true;
+      return;
+    }
+    codeEl.textContent = room.code;
+    playerCountEl.textContent = `${room.playerCount} / ${room.maxPlayers}명 입장 (최소 ${room.minPlayers}명)`;
+    playersEl.replaceChildren(...(s.players.length
+      ? s.players.map((p) => el('li', { 'data-player-id': p.playerId, text: `${p.playerId} · ${p.nickname}` }))
+      : [el('li', { class: 'dk-muted', text: '아직 입장한 참가자가 없습니다.' })]));
+    const inLobby = room.status === 'lobby';
+    startBtn.classList.toggle('dk-hidden', !inLobby);
+    startBtn.disabled = starting || !inLobby || room.playerCount < room.minPlayers;
+    if (!inLobby && s.privateDoc?.view) {
+      if (!gameArea) {
+        const game = getGame(room.gameId);
+        if (game && game.manifest.gameVersion !== room.gameVersion) {
+          notice.replaceChildren(message(`이 화면의 게임 버전(${game.manifest.gameVersion})과 방의 게임 버전(${room.gameVersion})이 다릅니다.`, 'error'));
+        }
+        gameArea = createGameArea(gameEl, { gameId: room.gameId, role: 'host', session: createOnlineSession(api, roomId) });
+      }
+      gameArea.update(s.privateDoc.view, room.result);
+    }
+  }
+
+  stopWatch = watchRoom(services, { roomId, uid: user.uid, role: 'host' }, update);
+}
+
+async function boot() {
+  try {
+    services = initFirebase(location.hostname, 'dkba-host');
+  } catch (err) {
+    setModeBadge('unconfigured');
+    fatal(err.message);
+    return;
+  }
+  setModeBadge(services.mode);
+  api = createRoomApi(services);
+  root.replaceChildren(el('section', { class: 'dk-card' }, [message('… 로그인 상태 확인 중')]));
+  const current = await waitForUser(services.auth);
+  if (current && !current.isAnonymous) {
+    user = current;
+    afterLogin();
+  } else {
+    renderLogin();
+  }
+}
+
+// 화면을 떠날 때 실시간 구독 해제, 뒤로 가기 캐시에서 복원되면 다시 연결
+window.addEventListener('pagehide', () => { stopWatch?.(); stopWatch = null; });
+window.addEventListener('pageshow', (e) => { if (e.persisted) location.reload(); });
+boot();
