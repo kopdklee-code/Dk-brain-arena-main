@@ -16,18 +16,21 @@
 - 모든 쓰기는 Cloud Functions가 판정(UID·방 소유자·참가자·단계·입력 검증, requestId + 트랜잭션). Firestore 규칙은 클라이언트 쓰기 전면 금지.
 - 문서 분리: `rooms/{id}` 공개 · `players/{uid}` 참가자 · `private/{uid}` 본인만 · `server/*`, `requests/*`, `codes/*` 서버 전용.
 - 로컬 주소에서는 에뮬레이터만 사용(프로젝트 ID `demo-dk-brain-arena`). 실서비스로 자동 연결 금지.
-- 생성물(`functions/generated/`, `dist/`)은 직접 수정 금지 → 원본 수정 후 재빌드.
+- 생성물(`functions/generated/`, `dist/`)은 직접 수정 금지·Git 미추적 → 원본 수정 후 재빌드.
+- Functions 코드는 목표 런타임(nodejs22) 범위 밖 모듈을 로드하지 않게 하위 경로로 import (예: `firebase-functions/v2/options`). `check:functions-bundle`이 검사.
+- 제출 성공은 서버 응답·서버 기준 문서로만 표시. 브라우저 온라인 신호는 안내에만 사용. 오프라인 제출 대기열 없음.
 - 출력 분리: Hosting `dist/hosting`(firebase.json public), 판매 패키지 `dist/packages`(Hosting 배포 금지).
 
 ## 작업 범위 기준
 - 1차 범위: 공통 흐름 + 개발 검증용 샘플 `demo-number-choice`(isDemo, 판매 게임 아님) + 오프라인 패키지 + 로컬·에뮬레이터 검증.
-- 범위 밖: 원격 배포, Git 원격 푸시, 실서비스 데이터 변경, 클라우드 프로젝트 생성·요금제 변경, 결제·구독·토너먼트·기관 관리·AI 분석·게임 편집기, 구매자 Firebase 설치형 전체 구현.
+- Git: 로컬 저장소 + GitHub 원격 `origin` (https://github.com/kopdklee-code/Dk-brain-arena-main, 공개 저장소). 사용자 지시에 따라 로컬 커밋을 원격에도 푸시. 작성자 정보는 이 저장소의 로컬 설정에만 있음. 기준선 커밋 `ccae531` (v0.1).
+- 범위 밖: Firebase 원격 배포, 실서비스 데이터 변경, 클라우드 프로젝트 생성·요금제 변경, 결제·구독·토너먼트·기관 관리·AI 분석·게임 편집기, 구매자 Firebase 설치형 전체 구현.
 - 샘플을 상용 게임으로 확정하지 않음. 가상의 게임·구매자 수·성공 사례 표시 금지.
 - 실제 실행하지 못한 검증은 통과로 기록하지 않음 (`docs/VERIFICATION.md`).
 
 ## 명령
 ```
-npm install && npm --prefix functions install   # 최초 1회
+npm ci && npm --prefix functions ci   # 최초 1회 (잠금 파일 그대로 설치)
 npm run build                  # functions/generated, dist/hosting, dist/packages 생성
 npm run emulators              # 빌드 후 Auth·Firestore·Functions·Hosting 에뮬레이터 (http://127.0.0.1:5000)
 npm run verify                 # 전체 검증 (아래 개별 명령을 순서대로 실행)
@@ -37,8 +40,9 @@ npm run check:dist             # Hosting/패키지 분리 확인
 npm run test:offline           # ZIP 해제 → standalone.html file:// 오프라인 3라운드 (Edge)
 npm run test:emulator          # 에뮬레이터 통합 테스트 (권한·중복·동시성·판정 일치)
 npm run test:e2e               # 브라우저 E2E (진행자·참가자 2명·공개 화면, Edge)
+npm run test:reconnect         # 연결 끊김·재연결 E2E (참가자 통신 차단·복원)
 ```
-요구 사항: Node 22+, Java 21(Firestore 에뮬레이터), Firebase CLI, Microsoft Edge(브라우저 검증. `DKBA_BROWSER_CHANNEL=chrome` 으로 변경 가능).
+요구 사항: **Node 22 (목표 런타임, functions engines·firebase.json nodejs22·.nvmrc)** — 없으면 `.tools/`에 공식 zip을 두고 그 창에서만 PATH 앞에 추가(README 참고). 전역 Node 변경 금지. Java 21(Firestore 에뮬레이터), Firebase CLI, Microsoft Edge(브라우저 검증. `DKBA_BROWSER_CHANNEL=chrome` 으로 변경 가능).
 
 ## 관련 문서
 - `README.md` — 준비물·실행·샘플 진행·패키지 생성

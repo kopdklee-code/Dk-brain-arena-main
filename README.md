@@ -7,17 +7,36 @@
 ## 로컬 준비물
 | 도구 | 확인한 버전 | 용도 |
 |---|---|---|
-| Node.js | 26.13.1 (22 이상 필요) | 빌드·테스트·Functions 에뮬레이터 |
+| Node.js | **22.23.5 (목표 런타임)**, 26.13.1(이전 기록) | 빌드·테스트·Functions 에뮬레이터 |
 | Java | 21 | Firestore 에뮬레이터 |
 | Firebase CLI | 15.36.0 | 에뮬레이터 (`npm i -g firebase-tools`) |
 | Microsoft Edge | 157 | 브라우저 자동 검증 (Chrome은 `DKBA_BROWSER_CHANNEL=chrome`) |
 
+**목표 런타임은 Node 22입니다.** `functions/package.json`의 `engines.node: "22"`와 `firebase.json`의 `runtime: "nodejs22"`가 이를 선언하고, `.nvmrc`도 `22`입니다. Node 22에서 전체 검증을 통과했습니다(`docs/VERIFICATION.md` 기록 2). 루트 개발 도구 중 `firebase` 웹 SDK는 `node >=24.12`를 선언하므로, Node 22에서 `npm ci`를 하면 EBADENGINE 경고가 나옵니다. 이 SDK는 배포 묶음에 포함되지 않고, 테스트는 Node 22에서 통과했습니다.
+
 Firebase 계정 로그인이나 클라우드 프로젝트는 필요 없습니다. 로컬 프로젝트 ID는 `demo-dk-brain-arena`이며, `demo-` 접두어가 붙은 ID는 에뮬레이터 전용이라 실서비스에 연결되지 않습니다.
 
-## 설치
+### Node 22를 이 프로젝트에만 사용하기 (전역 설치 없이)
+nvm-windows 같은 버전 관리 도구가 있다면 `nvm use 22`를 쓰면 됩니다. 없다면 공식 zip을 프로젝트의 `.tools/` 폴더(Git 제외)에 풀고, **현재 PowerShell 창에서만** PATH 앞에 추가합니다.
 ```powershell
-npm install
-npm --prefix functions install
+New-Item -ItemType Directory -Force .tools | Out-Null
+Invoke-WebRequest https://nodejs.org/dist/v22.23.5/node-v22.23.5-win-x64.zip -OutFile .tools\node22.zip
+(Get-FileHash .tools\node22.zip -Algorithm SHA256).Hash   # 4A191082E9706866830379D577D2CC8A50C776FCD9436A8D061B063ED0D9A0E3 와 같아야 함
+Expand-Archive .tools\node22.zip -DestinationPath .tools; Remove-Item .tools\node22.zip
+```
+새 PowerShell 창을 열 때마다 아래 명령을 한 번 실행합니다. 그 창에서만 적용됩니다.
+```powershell
+$env:Path = "$PWD\.tools\node-v22.23.5-win-x64;" + $env:Path; node -v
+```
+Firebase CLI도 PATH에 있는 `node`로 실행되므로, 이 창에서 시작한 에뮬레이터의 Functions도 Node 22로 동작합니다. 로그에 `Using node@22 from host.`가 표시되면 정상입니다.
+
+## 설치
+잠금 파일 그대로 설치합니다.
+```powershell
+npm ci
+```
+```powershell
+npm --prefix functions ci
 ```
 
 ## 실행 (로컬 에뮬레이터)
@@ -54,7 +73,27 @@ npm run build:packages
 ```powershell
 npm run verify
 ```
-규칙 단위 테스트부터 Functions 묶음 자립성, 산출물 분리, 오프라인 실행, 에뮬레이터 통합, 브라우저 E2E까지 순서대로 실행합니다. 개별 명령은 `CLAUDE.md`에 정리되어 있고, 결과는 `docs/VERIFICATION.md`에 기록되어 있습니다. 스크린샷과 로그는 `tests/.artifacts/`에 저장됩니다.
+Node 22를 적용한 창에서 실행하세요. 다음 순서로 진행됩니다.
+1. 규칙 단위 테스트
+2. Functions 묶음 자립성 확인 (Node 22 범위 밖 모듈이 로드되지 않는지 포함)
+3. 산출물 분리 확인
+4. 오프라인 실행
+5. 에뮬레이터 통합 테스트
+6. 브라우저 E2E
+7. 연결 끊김·재연결 E2E
+
+연결 끊김·재연결만 따로 실행하려면 아래 명령을 씁니다. 참가자 한 명의 통신을 차단·복원하면서 끊김 안내, 미접수 선택 표시, 자리·라운드·제출 상태 복구, 중복 등록·중복 점수 방지를 확인합니다.
+```powershell
+npm run test:reconnect
+```
+개별 명령은 `CLAUDE.md`에 정리되어 있고, 결과는 `docs/VERIFICATION.md`에 Node 22 기록과 Node 26 기록으로 나뉘어 있습니다. 스크린샷과 로그는 `tests/.artifacts/`에 저장되며 Git에는 포함되지 않습니다.
+
+생성물(`dist/`, `functions/generated/`)은 Git에 포함하지 않습니다. 저장소를 새로 받았다면 `npm ci` 두 번과 `npm run build`로 다시 만듭니다.
+
+## 연결 끊김 시 동작
+- 연결이 끊기면 상태 라벨이 "× 오프라인"으로 바뀌고, 진행자·참가자 화면 본문에 안내가 나타납니다.
+- 제출 성공 여부는 **서버의 처리 결과와 서버 기준 문서**로만 표시합니다. 서버 응답을 받지 못하면 접수 여부를 단정하지 않고, 화면의 서버 기준 상태를 확인하도록 안내합니다.
+- 연결이 복원되면 기존 자리, 현재 라운드, 본인 제출 상태가 서버 기준으로 다시 표시됩니다. 오프라인 제출 대기열은 없으므로, 접수되지 않은 선택은 다시 해야 합니다.
 
 ## 운영 배포 시 필요한 외부 설정 (이번 작업에서는 수행하지 않음)
 - Firebase 프로젝트를 만들고 `.firebaserc`의 프로젝트 ID를 바꿉니다.

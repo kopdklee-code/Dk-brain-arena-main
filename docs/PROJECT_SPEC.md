@@ -20,7 +20,7 @@
 |---|---|---|
 | 데이터베이스 | Cloud Firestore | Realtime Database 미도입 (함께 도입하지 않음) |
 | 사용자 식별 | Firebase Authentication | 진행자: 이메일/비밀번호, 참가자: 익명 인증 |
-| 서버 판정 | Cloud Functions (JavaScript, 2세대 callable) | 리전 `asia-northeast3`(서울), 런타임 `nodejs22` |
+| 서버 판정 | Cloud Functions (JavaScript, 2세대 callable) | 리전 `asia-northeast3`(서울), 런타임 `nodejs22` (목표 Node 22: functions engines·firebase.json·.nvmrc 일치, Node 22.23.5로 검증) |
 | 유료 파일 보관·다운로드 | 후속 단계: Cloud Storage + 구매 권한 검증 | 이번 미구현 |
 | 로컬 프로젝트 ID | `demo-dk-brain-arena` | `demo-` 접두어 → 에뮬레이터 전용, 실서비스 접근 불가 |
 | 빌드 도구 | esbuild 0.28.2 | 브라우저 번들·Functions 규칙 번들·standalone 인라인 |
