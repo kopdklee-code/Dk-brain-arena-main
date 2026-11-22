@@ -42,8 +42,8 @@
 ### 운영 반영 (사용자 지시: Hosting 배포)
 | 작업 | 결과 |
 |---|---|
-| Hosting 배포 | \`firebase deploy --project prod --only hosting --non-interactive\` 실행(Node 22.23.5, 커밋 \`094aff6\`, 작업 트리 변경 없음, \`origin/main\`과 같음). 바뀐 5개 파일을 업로드해 release 완료. Functions는 배포하지 않음(서버 변경 없음) |
-| 배포 확인 (읽기 전용) | \`dist/hosting\`의 18개 파일 전부를 운영 주소에서 내려받아 비교 → 모두 바이트 단위로 같음(QR 코드는 \`js/chunks/chunk-ARS3ZTYF.js\`에 포함). 판매 패키지 경로 404. 앱 내 브라우저로 진행자 화면(비로그인)을 열어 콘솔 오류 없음 |
+| Hosting 배포 | `firebase deploy --project prod --only hosting --non-interactive` 실행(Node 22.23.5, 커밋 `094aff6`, 작업 트리 변경 없음, `origin/main`과 같음). 바뀐 5개 파일을 업로드해 release 완료. Functions는 배포하지 않음(서버 변경 없음) |
+| 배포 확인 (읽기 전용) | `dist/hosting`의 18개 파일 전부를 운영 주소에서 내려받아 비교 → 모두 바이트 단위로 같음(QR 코드는 `js/chunks/chunk-ARS3ZTYF.js`에 포함). 판매 패키지 경로 404. 앱 내 브라우저로 진행자 화면(비로그인)을 열어 콘솔 오류 없음 |
 
 ---
 
