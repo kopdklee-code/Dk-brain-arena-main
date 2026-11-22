@@ -63,18 +63,20 @@ export function newRequestId() {
   return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 12)}`;
 }
 
-// 서버 응답을 받지 못한 경우(통신 끊김·응답 유실·서버 내부 오류). 요청이 서버에 도달했는지 알 수 없으므로
-// 성공·실패를 단정하지 않고, 서버 기준 상태(Firestore 구독)를 확인하도록 안내한다.
-export const NO_RESPONSE_MESSAGE = '서버 응답을 받지 못했습니다. 접수되지 않았을 수 있습니다. 연결이 복구되면 화면의 제출 상태(서버 기준)를 확인하고 필요하면 다시 선택하세요.';
+// 서버 응답을 받지 못한 경우(통신 끊김·응답 유실·서버 미배포·서버 내부 오류). 요청이 처리됐는지 알 수 없으므로
+// 성공·실패를 단정하지 않는다. 게임 행동은 서버 기준 상태(Firestore 구독)를 확인하도록 안내한다.
+const NO_RESPONSE_CODES = ['functions/unavailable', 'functions/internal', 'functions/deadline-exceeded', 'functions/not-found'];
+export const NO_RESPONSE_MESSAGE = '서버(Functions) 응답을 받지 못했습니다. 네트워크 상태를 확인하고 잠시 후 다시 시도하세요. 계속되면 서버가 배포되지 않았거나 점검 중일 수 있습니다.';
+export const GAME_NO_RESPONSE_MESSAGE = '서버 응답을 받지 못했습니다. 접수되지 않았을 수 있습니다. 연결이 복구되면 화면의 제출 상태(서버 기준)를 확인하고 필요하면 다시 선택하세요.';
 
-/** callable 오류를 사용자 메시지로 변환 */
-export function describeError(err) {
+/** callable 오류를 사용자 메시지로 변환. context 'game' 은 게임 행동(제출·마감)용 안내 */
+export function describeError(err, context = 'general') {
   if (!err) return '알 수 없는 오류';
-  if (['functions/unavailable', 'functions/internal', 'functions/deadline-exceeded'].includes(err.code)) {
-    return NO_RESPONSE_MESSAGE;
+  if (NO_RESPONSE_CODES.includes(err.code)) {
+    return context === 'game' ? GAME_NO_RESPONSE_MESSAGE : NO_RESPONSE_MESSAGE;
   }
   if (err.code === 'auth/network-request-failed') {
-    return '인증 서버에 연결하지 못했습니다. 에뮬레이터 실행 상태를 확인하세요.';
+    return '인증 서버에 연결하지 못했습니다. 네트워크(로컬에서는 에뮬레이터 실행 상태)를 확인하세요.';
   }
   return err.message || String(err);
 }
@@ -154,7 +156,7 @@ export function createOnlineSession(api, roomId) {
         const res = await api.sendAction(roomId, action);
         return res.ok ? { ok: true } : { ok: false, error: res.error };
       } catch (err) {
-        return { ok: false, error: { code: err.code, message: describeError(err) } };
+        return { ok: false, error: { code: err.code, message: describeError(err, 'game') } };
       }
     },
   };

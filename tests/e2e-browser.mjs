@@ -77,6 +77,13 @@ async function main() {
     await host.page.locator('[data-action="create-room"]').waitFor();
     assert.match(await host.page.locator('.dk-status').first().innerText(), new RegExp(hostEmail));
     log('google sign-in OK');
+    // 서버 응답이 없을 때(통신 실패·서버 미배포) 방 만들기 안내: 게임 제출용 문구가 아닌 일반 안내
+    await host.page.route('**/createRoom', (route) => route.abort('failed'));
+    await host.page.locator('[data-action="create-room"]').click();
+    const noResp = await host.page.locator('.dk-message--error', { hasText: '서버(Functions) 응답을 받지 못했습니다' }).innerText();
+    assert.ok(!noResp.includes('제출 상태'), `방 만들기 실패 안내에 제출 문구가 섞임: ${noResp}`);
+    await host.page.unroute('**/createRoom');
+    log('create-room no-response message OK');
     // 승인 전: 방 만들기 거부 + 승인 요청 안내
     await host.page.locator('[data-action="create-room"]').click();
     await host.page.locator('.dk-message--error', { hasText: '진행자 승인이 필요합니다' }).waitFor();
@@ -173,7 +180,8 @@ async function main() {
     // 의도적으로 거부된 요청(늦은 입장)은 콘솔에 오류로 남을 수 있으므로 그 외 오류만 실패 처리
     // 허용(의도된 거부만): 'late' 의 joinRoom 400(시작 이후 입장 거부), 'host' 의 createRoom 403(승인 전 진행자) 각 1건
     const intended = (e) => (e.startsWith('late:') && (/HTTP 400 .*\/joinRoom$/.test(e) || /status of 400/.test(e)))
-      || (e.startsWith('host:') && (/HTTP 403 .*\/createRoom$/.test(e) || /status of 403/.test(e)));
+      || (e.startsWith('host:') && (/HTTP 403 .*\/createRoom$/.test(e) || /status of 403/.test(e)))
+      || (e === 'host: Failed to load resource: net::ERR_FAILED'); // 의도적으로 차단한 createRoom 요청(응답 없음 안내 확인)
     const unexpected = relevant.filter((e) => !intended(e));
     assert.equal(unexpected.length, 0, `예상치 못한 콘솔 오류: ${unexpected.join('\n')}`);
     log('PASS 온라인 E2E');
