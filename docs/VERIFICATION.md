@@ -47,11 +47,14 @@
 | 실패 안내 문구 수정 | 방 만들기·입장·시작이 실패할 때 게임 제출용 문구('제출 상태… 다시 선택')가 나오던 문제를 고침. 일반 요청은 '서버(Functions) 응답을 받지 못했습니다… 배포되지 않았거나 점검 중일 수 있습니다'로, 게임 행동만 제출용 문구로 안내. E2E에 방 만들기 요청 차단 시 일반 문구가 나오는지 확인을 추가. 수정 후 `npm run verify` 종료 코드 0(단위 14/14, 통합 8/8, E2E, 연결 끊김 19/19, 오프라인, 검사 2종). 이후 운영 Hosting에 다시 배포함(다음 줄) |
 | Hosting 재배포 (사용자 지시: Hosting 재배포) | `firebase deploy --project prod --only hosting` 실행(Node 22.23.5). 커밋 `e239e8a`, 작업 트리 변경 없음, `origin/main`과 같음. 17개 파일 중 바뀐 4개를 업로드해 release 완료. Functions는 배포하지 않음 |
 | 재배포 확인 (읽기 전용) | 새 문구가 들어 있는 운영 JS 묶음(`js/chunks/chunk-AH5DTQKP.js`)을 내려받아 로컬 빌드와 비교 → 바이트 단위로 같음. `/`, `host.html`, `play.html`, `display.html`, `game.html`, CSS 200, 판매 패키지 경로 404. 앱 내 브라우저로 진행자 화면(비로그인)을 열어 'Google로 로그인' 표시, 콘솔 오류 없음. 운영에서 방 만들기를 눌러 새 문구가 실제로 나오는지는 Google 로그인이 필요해 **직접 확인하지 않음** |
+| 배포 전 운영 설정 조회 (읽기 전용, CLI 로그인 권한) | 결제 계정 연결 `billingEnabled: true`(사용자가 Blaze 전환), 익명·Google 제공자 모두 켜짐, 승인 도메인 `localhost`·`dk-brain-arena.firebaseapp.com`·`dk-brain-arena.web.app`. Functions 관련 API(cloudfunctions·cloudbuild·artifactregistry·run·eventarc)는 꺼짐 |
+| Functions 배포 (사용자 지시: Functions 배포) | `firebase deploy --project prod --only functions --non-interactive` 실행(Node 22.23.5, 커밋 `2879c57`, 작업 트리 변경 없음). 필요한 API를 CLI가 켬. `createRoom`·`joinRoom`·`startGame`·`gameAction` 4개를 asia-northeast3, Node.js 22(2세대)로 생성 성공. 그 뒤 Artifact Registry 이미지 정리 정책 설정만 실패해 CLI 종료 코드는 오류임(함수 배포에는 영향 없음). **정리 정책은 설정하지 않음** — 이미지가 쌓이면 소액 저장 비용이 생길 수 있음 |
+| 배포 확인 (비로그인 요청) | 4개 함수 모두 CORS 사전 요청(Origin `dk-brain-arena.web.app`) 204, 비로그인 POST는 401 `UNAUTHENTICATED` "로그인이 필요합니다." → 함수가 응답하고 서버 쪽 로그인 검사가 동작함. 로그인한 상태의 방 만들기·입장·진행은 **직접 확인하지 않음** |
 
 ### 기록 4의 미검증 (통과로 보지 않음)
 - **실제 Google 계정으로 로그인:** 운영에서 확인하지 않았습니다. 에뮬레이터의 가상 Google 로그인만 확인했습니다. 승인 도메인과 팝업 동작은 배포 후 확인해야 합니다.
-- **운영 Functions 미배포:** Blaze 요금제가 필요해 배포하지 않았습니다. Hosting만 배포된 상태라 화면은 열리지만, 방 만들기·입장·진행은 동작하지 않습니다. 참가자·공개 화면과 운영에서의 Google 로그인도 아직 확인하지 않았습니다.
-- **익명 로그인 제공자:** 운영에서 켜져 있는지 확인하지 않았습니다. 참가자 입장에 꼭 필요합니다.
+- **운영 실사용 흐름:** Functions는 배포했고 비로그인 요청 거부까지만 확인했습니다. 승인된 진행자의 방 만들기, 참가자 입장(익명), 공개 화면, 3라운드 진행과 결과는 운영에서 아직 확인하지 않았습니다.
+- **익명 로그인 제공자:** 설정에서 켜진 것만 조회로 확인했습니다. 실제 익명 로그인은 운영에서 실행하지 않았습니다.
 - **승인 해제 후 기존 방:** 해제한 진행자가 이미 만든 방의 진행을 막지 않습니다(의도한 동작). 이 경우를 따로 테스트하지는 않았습니다.
 
 ---
