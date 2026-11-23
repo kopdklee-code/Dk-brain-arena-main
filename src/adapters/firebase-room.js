@@ -67,15 +67,18 @@ export function newRequestId() {
 // 성공·실패를 단정하지 않는다. 게임 행동은 서버 기준 상태(Firestore 구독)를 확인하도록 안내한다.
 const NO_RESPONSE_CODES = ['functions/unavailable', 'functions/internal', 'functions/deadline-exceeded', 'functions/not-found'];
 export const NO_RESPONSE_MESSAGE = '서버(Functions) 응답을 받지 못했습니다. 네트워크 상태를 확인하고 잠시 후 다시 시도하세요. 계속되면 서버가 배포되지 않았거나 점검 중일 수 있습니다.';
+export const JOIN_NO_RESPONSE_MESSAGE = '게임 서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.';
 export const GAME_NO_RESPONSE_MESSAGE = '서버 응답을 받지 못했습니다. 접수되지 않았을 수 있습니다. 연결이 복구되면 화면의 제출 상태(서버 기준)를 확인하고 필요하면 다시 선택하세요.';
 
-/** callable 오류를 사용자 메시지로 변환. context 'game' 은 게임 행동(제출·마감)용 안내 */
+/** callable 오류를 사용자 메시지로 변환. context: 'game'(게임 행동) | 'join'(참가자 입장·연결) | 'general' */
 export function describeError(err, context = 'general') {
   if (!err) return '알 수 없는 오류';
   if (NO_RESPONSE_CODES.includes(err.code)) {
-    return context === 'game' ? GAME_NO_RESPONSE_MESSAGE : NO_RESPONSE_MESSAGE;
+    if (context === 'game') return GAME_NO_RESPONSE_MESSAGE;
+    return context === 'join' ? JOIN_NO_RESPONSE_MESSAGE : NO_RESPONSE_MESSAGE;
   }
   if (err.code === 'auth/network-request-failed') {
+    if (context === 'join') return JOIN_NO_RESPONSE_MESSAGE;
     return '인증 서버에 연결하지 못했습니다. 네트워크(로컬에서는 에뮬레이터 실행 상태)를 확인하세요.';
   }
   return err.message || String(err);
@@ -90,7 +93,32 @@ export function createRoomApi({ functions }) {
     /** 같은 requestId 로 재시도하면 서버는 저장된 결과를 돌려주고 점수를 다시 반영하지 않는다. */
     sendAction: async (roomId, action, requestId = newRequestId()) =>
       (await call('gameAction')({ roomId, requestId, action })).data,
+    serverTime: async () => (await call('serverTime')({})).data,
   };
+}
+
+/**
+ * 서버 시계 보정 (화면 타이머 표시용). now() 는 서버 기준 추정 시각(ms).
+ * 왕복 시간의 절반을 지연으로 보고 차이를 구한다. 실패하면 기기 시계를 그대로 쓰며, 판정에는 영향이 없다.
+ */
+export function createServerClock(api) {
+  let offset = 0;
+  let synced = false;
+  async function sync() {
+    let best = null;
+    for (let i = 0; i < 3; i += 1) {
+      try {
+        const t0 = Date.now();
+        const { now } = await api.serverTime();
+        const t1 = Date.now();
+        const sample = { rtt: t1 - t0, offset: now - (t0 + t1) / 2 };
+        if (!best || sample.rtt < best.rtt) best = sample;
+      } catch { /* 다음 시도 */ }
+    }
+    if (best) { offset = best.offset; synced = true; }
+    return synced;
+  }
+  return { now: () => Date.now() + offset, sync, isSynced: () => synced };
 }
 
 /**

@@ -131,7 +131,7 @@ async function main() {
 
     // ── E: 재접속(새로고침) 후 중복 등록 없음 ──
     await p2.page.reload();
-    await p2.page.locator('.dk-message', { hasText: '재접속되었습니다' }).waitFor();
+    await p2.page.locator('.dk-message', { hasText: '기존 참가 상태를 복구했습니다' }).waitFor();
     await p2.page.locator('.g-dnc__mine', { hasText: '제출 완료: 3' }).waitFor();
     check('E1 새로고침 후 자리·제출 상태 복구', await p2.page.locator('[data-seat="p2"]').count() === 1);
     const hostPlayers = await host.page.locator('[data-players] li').count();

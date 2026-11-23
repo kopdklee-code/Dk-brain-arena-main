@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="단 하나의 숫자">
+  <rect width="64" height="64" rx="12" fill="#0f1b33"/>
+  <rect x="8" y="34" width="8" height="18" rx="2" fill="#5b6b8c"/>
+  <rect x="20" y="22" width="8" height="30" rx="2" fill="#5b6b8c"/>
+  <rect x="32" y="40" width="8" height="12" rx="2" fill="#f5c542"/>
+  <rect x="44" y="28" width="8" height="24" rx="2" fill="#5b6b8c"/>
+  <path d="M36 12l2.4 5 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4-3.9-3.8 5.4-.8z" fill="#f5c542"/>
+</svg>

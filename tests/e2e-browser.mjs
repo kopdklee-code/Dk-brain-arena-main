@@ -76,10 +76,11 @@ async function main() {
 
     // 홈·게임 목록·상세
     await host.page.goto(`${BASE}/index.html`);
-    const cards = await host.page.locator('[data-game-id]').count();
-    assert.equal(cards, 1, '구현된 샘플 1개만 표시');
-    assert.match(await host.page.locator('[data-game-id]').innerText(), /개발 검증용/);
-    await host.page.locator('a', { hasText: '자세히 보기' }).click();
+    // 등록된 게임만 표시 (샘플 + 단 하나의 숫자). 샘플은 개발 검증용 표시
+    assert.equal(await host.page.locator('[data-game-id]').count(), 2, '등록된 게임 2개 표시');
+    const demoCard = host.page.locator('[data-game-id="demo-number-choice"]');
+    assert.match(await demoCard.innerText(), /개발 검증용/);
+    await demoCard.locator('a', { hasText: '자세히 보기' }).click();
     await host.page.locator('h1', { hasText: '숫자 선택 샘플' }).waitFor();
     await host.page.locator('a', { hasText: '진행자로 방 만들기' }).click();
     log('home/list/detail OK');
@@ -176,7 +177,7 @@ async function main() {
       if (round === 2) {
         // 참가자2 새로고침 → 자리·상태 복구
         await p2.page.reload();
-        await p2.page.locator('.dk-message', { hasText: '재접속되었습니다' }).waitFor();
+        await p2.page.locator('.dk-message', { hasText: '기존 참가 상태를 복구했습니다' }).waitFor();
         await p2.page.locator('[data-seat="p2"]').waitFor();
         await p2.page.locator('.g-dnc__round', { hasText: '2 / 3 라운드' }).waitFor();
         // 상대 제출 내역(공개 정보)도 복구되어 보임

@@ -1,5 +1,5 @@
 // 공개 화면 (빔프로젝터): 공개 문서만 구독한다. 입력 기능 없음.
-import { initFirebase, ensureAnonymousUser, watchRoom, describeError } from '../adapters/firebase-room.js';
+import { initFirebase, ensureAnonymousUser, watchRoom, describeError, createRoomApi, createServerClock } from '../adapters/firebase-room.js';
 import { el, $, message, pill, param, setModeBadge, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
 import { createGameArea } from './game-area.js';
 import { createJoinQr, joinUrlFor } from './qr.js';
@@ -29,6 +29,8 @@ async function boot() {
     root.replaceChildren(message(`연결 실패: ${describeError(err)}`, 'error'));
     return;
   }
+  const clock = createServerClock(createRoomApi(services));
+  clock.sync(); // 타이머 표시 보정 (판정과 무관)
 
   const codeEl = el('div', { class: 'dk-code dk-code--huge', 'data-room-code': true, text: '------' });
   const statusRow = el('div', { class: 'dk-status' });
@@ -66,9 +68,14 @@ async function boot() {
     playersEl.replaceChildren(...(s.players.length
       ? s.players.map((p) => el('li', { text: `${p.playerId} · ${p.nickname}` }))
       : [el('li', { class: 'dk-muted', text: '입장을 기다리는 중' })]));
-    if (room.status !== 'lobby' && room.publicView) {
-      if (!gameArea) gameArea = createGameArea(gameEl, { gameId: room.gameId, role: 'display' });
-      gameArea.update(room.publicView, room.result);
+    // 시작 후에는 입장 안내·참가자 목록을 접어 게임 화면에 공간을 준다 (코드는 작게 유지)
+    const inLobby = room.status === 'lobby';
+    root.querySelector('[data-lobby]')?.classList.toggle('dk-hidden', !inLobby);
+    codeEl.classList.toggle('dk-code--huge', inLobby);
+    joinText.classList.toggle('dk-hidden', !inLobby);
+    if (!inLobby && room.publicView) {
+      if (!gameArea) gameArea = createGameArea(gameEl, { gameId: room.gameId, role: 'display', now: clock.now });
+      gameArea.update(room.publicView, room.result, room.publicView, room.inputCounts || null);
     } else {
       gameEl.replaceChildren(el('p', { class: 'dk-muted', text: `${room.title} · 진행자가 시작하면 진행 상황이 표시됩니다.` }));
     }

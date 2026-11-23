@@ -12,6 +12,8 @@
 ## 구조 원칙
 - `rules.js`는 순수 함수(createGame·executeAction·getView·getResult·normalizeConfig). DOM·Firebase·네트워크·저장소·시간·난수 직접 사용 금지.
 - `view.js`는 상태 표시와 입력 전달만. Firebase·로그인을 모름.
+- 게임 폴더는 다른 게임·공통 모듈을 import 하지 않음. 새 게임 추가 시 바꾸는 공통 파일은 `registry.js`·`views.js`·`package.json`(테스트)뿐. 게임별 테스트는 `tests/games/<gameId>/`. 공통 기능이 부족하면 게임과 무관한 선택 계약으로 확장하고 모든 게임 회귀 테스트 실행 (`docs/GAME_MODULE_GUIDE.md` 0절).
+- 시간 판정은 서버가 넘기는 `ctx.now`로만. 동시 제출이 많은 입력은 `rules.playerInput` 계약(참가자별 서버 전용 입력 문서) 사용. 입장은 자리·닉네임 문서를 "없을 때만 생성"으로 확보. 여러 참가자가 같은 문서를 트랜잭션으로 쓰는 구조를 새로 만들지 않음.
 - 플랫폼 방 상태(lobby/playing/finished)와 게임 내부 단계는 분리. 게임별 라운드·점수 공식을 공통 코드에 넣지 않음.
 - 진행자 = Google 로그인 + 관리자 승인 목록 `hostAccounts/{소문자 이메일}`(enabled !== false, 콘솔 관리, 클라이언트 접근 금지). createRoom 에서 서버가 검증. 에뮬레이터만 이메일/비밀번호 허용. 참가자 = 익명. 관리자 이메일 등 개인정보는 공개 저장소에 기록하지 않음.
 - 모든 쓰기는 Cloud Functions가 판정(UID·방 소유자·참가자·단계·입력 검증, requestId + 트랜잭션). Firestore 규칙은 클라이언트 쓰기 전면 금지.
@@ -24,6 +26,7 @@
 
 ## 작업 범위 기준
 - 1차 범위: 공통 흐름 + 개발 검증용 샘플 `demo-number-choice`(isDemo, 판매 게임 아님) + 오프라인 패키지 + 로컬·에뮬레이터 검증.
+- 첫 게임: 「단 하나의 숫자」 `unique-number` (지시문 v1.1, 규칙 변경 금지 — `src/games/unique-number/README.md`). platform 전용.
 - Git: 로컬 저장소 + GitHub 원격 `origin` (https://github.com/kopdklee-code/Dk-brain-arena-main, 공개 저장소). 사용자 지시에 따라 로컬 커밋을 원격에도 푸시. 작성자 정보는 이 저장소의 로컬 설정에만 있음. 기준선 커밋 `ccae531` (v0.1).
 - Firebase 프로젝트: 에뮬레이터 `demo-dk-brain-arena`(.firebaserc `default`, 모든 npm 스크립트가 명시), 운영 `dk-brain-arena`(별칭 `prod`, 번호 565207270396, 웹 앱 설정은 `src/shared/firebase-env.js`). 로컬 주소는 항상 에뮬레이터. 운영 배포(`firebase deploy --project prod`)와 운영 콘솔 설정 변경은 사용자의 명시적 지시가 있을 때만 하며, npm 스크립트에 배포 명령을 넣지 않음.
 - 범위 밖: Firebase 원격 배포(지시 전까지), 실서비스 데이터 변경, 클라우드 프로젝트 생성·요금제 변경, 결제·구독·토너먼트·기관 관리·AI 분석·게임 편집기, 구매자 Firebase 설치형 전체 구현.
@@ -43,6 +46,8 @@ npm run test:offline           # ZIP 해제 → standalone.html file:// 오프�
 npm run test:emulator          # 에뮬레이터 통합 테스트 (권한·중복·동시성·판정 일치)
 npm run test:e2e               # 브라우저 E2E (진행자·참가자 2명·공개 화면, Edge)
 npm run test:reconnect         # 연결 끊김·재연결 E2E (참가자 통신 차단·복원)
+npm run test:unique-number     # 단 하나의 숫자 29명 시나리오 A~I (에뮬레이터, 동시 처리 10)
+npm run test:unique-number:e2e # 단 하나의 숫자 브라우저 E2E (진행자·공개 1920·모바일 3폭 + 서버 호출 26명)
 ```
 요구 사항: **Node 22 (목표 런타임, functions engines·firebase.json nodejs22·.nvmrc)** — 없으면 `.tools/`에 공식 zip을 두고 그 창에서만 PATH 앞에 추가(README 참고). 전역 Node 변경 금지. Java 21(Firestore 에뮬레이터), Firebase CLI, Microsoft Edge(브라우저 검증. `DKBA_BROWSER_CHANNEL=chrome` 으로 변경 가능).
 

@@ -1,14 +1,15 @@
 // 진행자 화면: 로그인 → 방 생성 → 대기실 → 게임 시작 → 라운드 마감 → 결과
-import { initFirebase, waitForUser, hostAuth, createRoomApi, watchRoom, createOnlineSession, describeError } from '../adapters/firebase-room.js';
+import { initFirebase, waitForUser, hostAuth, createRoomApi, watchRoom, createOnlineSession, describeError, createServerClock } from '../adapters/firebase-room.js';
 import { getGame, listManifests } from '../games/registry.js';
 import { el, $, message, pill, param, setParams, setModeBadge, connectionNotice, CONNECTION_LABEL, ROOM_STATUS_LABEL } from './ui.js';
 import { createGameArea } from './game-area.js';
-import { createJoinQr, joinUrlFor } from './qr.js';
+import { createJoinQr, joinUrlFor, isLocalOnlyUrl } from './qr.js';
 
 const root = $('[data-host]');
 let services;
 let api;
 let user;
+let clock = null;
 let stopWatch = null;
 
 function fatal(text) {
@@ -158,6 +159,10 @@ function openRoom(roomId) {
   const joinQr = createJoinQr({ size: 'md' });
   joinQr.element.classList.add('dk-hidden'); // 코드가 정해지고 입장 가능한 동안(대기실)만 표시
   const displayUrl = new URL(`display.html?room=${encodeURIComponent(roomId)}`, location.href).href;
+  const precheck = el('section', { class: 'dk-precheck', 'data-precheck': true, 'aria-label': '시작 전 점검' });
+  const finishedEl = el('div', { 'data-finished-actions': true });
+  let clockState = 'checking';
+  clock.sync().then((ok) => { clockState = ok ? 'ok' : 'fail'; if (latest) update(latest); });
 
   let starting = false;
   let latest = null;
@@ -190,8 +195,10 @@ function openRoom(roomId) {
       joinQr.element,
       el('p', {}, ['참가 주소: ', joinLink]),
       el('p', {}, [el('a', { href: displayUrl, target: '_blank', rel: 'noopener', 'data-display-link': true, text: '공개 화면 열기 (빔프로젝터용)' })]),
+      precheck,
       el('h2', { text: '참가자' }), playerCountEl, playersEl,
       el('div', { class: 'dk-actions' }, [startBtn]),
+      finishedEl,
       notice,
     ]),
     el('section', { class: 'dk-card', 'aria-label': '게임 진행' }, [gameEl]),
@@ -224,16 +231,43 @@ function openRoom(roomId) {
     const inLobby = room.status === 'lobby';
     startBtn.classList.toggle('dk-hidden', !inLobby);
     startBtn.disabled = starting || !inLobby || room.playerCount < room.minPlayers;
+    renderPrecheck(s, room, joinUrl, inLobby);
+    finishedEl.replaceChildren(room.status === 'finished'
+      ? el('div', { class: 'dk-actions' }, [el('a', { class: 'dk-btn', href: `host.html?game=${encodeURIComponent(room.gameId)}`, 'data-action': 'new-room', text: '새 게임방 만들기' })])
+      : '');
     if (!inLobby && s.privateDoc?.view) {
       if (!gameArea) {
         const game = getGame(room.gameId);
         if (game && game.manifest.gameVersion !== room.gameVersion) {
           notice.replaceChildren(message(`이 화면의 게임 버전(${game.manifest.gameVersion})과 방의 게임 버전(${room.gameVersion})이 다릅니다.`, 'error'));
         }
-        gameArea = createGameArea(gameEl, { gameId: room.gameId, role: 'host', session: createOnlineSession(api, roomId) });
+        gameArea = createGameArea(gameEl, { gameId: room.gameId, role: 'host', session: createOnlineSession(api, roomId), now: clock.now });
       }
-      gameArea.update(s.privateDoc.view, room.result);
+      gameArea.update(s.privateDoc.view, room.result, room.publicView, room.inputCounts || null);
     }
+  }
+
+  /** 시작 전 점검 (대기실에서만). 측정하지 않은 항목은 정상으로 표시하지 않는다. */
+  function renderPrecheck(s, room, joinUrl, inLobby) {
+    precheck.classList.toggle('dk-hidden', !inLobby);
+    if (!inLobby) return;
+    const local = isLocalOnlyUrl(joinUrl);
+    const row = (state, label, detail) => el('li', { 'data-check': label, 'data-state': state }, [
+      el('span', { class: `dk-check dk-check--${state}`, text: { ok: '✓ 확인', warn: '! 주의', fail: '✕ 문제', none: '– 측정 안 함' }[state] }),
+      el('strong', { text: ` ${label}` }), detail ? ` — ${detail}` : '',
+    ]);
+    precheck.replaceChildren(
+      el('h2', { text: '시작 전 점검' }),
+      el('ul', { class: 'dk-checklist' }, [
+        row(s.connection === 'online' ? 'ok' : 'warn', '실시간 연결', CONNECTION_LABEL[s.connection] || s.connection),
+        row(clockState === 'ok' ? 'ok' : clockState === 'fail' ? 'fail' : 'warn', '서버 기능 응답', clockState === 'ok' ? '서버 시각 확인됨' : clockState === 'fail' ? '응답 없음 — 제출·진행이 동작하지 않습니다' : '확인 중'),
+        row(local ? 'warn' : 'ok', '참가자 접속 주소', local ? `${joinUrl} (로컬 주소 — 이 PC에서만 열리며 휴대폰 접속용이 아닙니다)` : joinUrl),
+        row(joinQr.element.querySelector('svg') ? 'ok' : 'fail', 'QR코드 생성', joinQr.element.querySelector('svg') ? '생성됨' : '생성 안 됨'),
+        row(room.playerCount >= room.minPlayers ? 'ok' : 'warn', '참가 인원', `${room.playerCount} / ${room.maxPlayers}명 (시작 최소 ${room.minPlayers}명)`),
+        row(room.playerCount >= room.minPlayers ? 'ok' : 'warn', '게임 시작 가능', room.playerCount >= room.minPlayers ? '시작할 수 있음' : '인원 부족'),
+        row('none', '네트워크 속도·지연', '이 화면은 측정하지 않습니다'),
+      ]),
+    );
   }
 
   stopWatch = watchRoom(services, { roomId, uid: user.uid, role: 'host' }, update);
@@ -249,6 +283,7 @@ async function boot() {
   }
   setModeBadge(services.mode);
   api = createRoomApi(services);
+  clock = createServerClock(api);
   root.replaceChildren(el('section', { class: 'dk-card' }, [message('… 로그인 상태 확인 중')]));
   const current = await waitForUser(services.auth);
   if (current && !current.isAnonymous) {

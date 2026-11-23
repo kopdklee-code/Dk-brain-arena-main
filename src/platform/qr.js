@@ -11,6 +11,12 @@ export function joinUrlFor(code, base = location.href) {
   return url.href;
 }
 
+/** 이 PC에서만 열리는 주소인가 (휴대폰 QR 접속용으로 쓰면 안 됨) */
+export function isLocalOnlyUrl(url) {
+  const host = new URL(url).hostname.replace(/^\[|\]$/g, '');
+  return host === 'localhost' || host.endsWith('.localhost') || host === '::1' || /^127\./.test(host);
+}
+
 /** 텍스트 → 정사각형 SVG. 오류 정정 M(약 15% 손상 복구) */
 export function qrSvg(text, { label = text } = {}) {
   const qr = qrcode(0, 'M');
@@ -63,6 +69,11 @@ export function createJoinQr({ size = 'md' } = {}) {
       const url = joinUrlFor(code);
       element.setAttribute('data-join-url', url);
       box.replaceChildren(qrSvg(url, { label: `참가 QR 코드 (입장 코드 ${code})` }));
+      const local = isLocalOnlyUrl(url);
+      element.classList.toggle('dk-qr--local', local);
+      caption.textContent = local
+        ? '⚠ 로컬 검증용 주소입니다. 이 PC에서만 열리며 휴대폰 접속용이 아닙니다.'
+        : '휴대폰 카메라로 찍으면 입장 화면이 열립니다';
     },
   };
 }

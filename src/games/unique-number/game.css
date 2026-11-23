@@ -1,0 +1,159 @@
+/* 단 하나의 숫자 — 게임 전용 스타일 (.g-un 범위). 다크 네이비·차콜, 높은 대비. 색만으로 구분하지 않고 기호·글자 병기 */
+.g-un {
+  --un-bg: #0f1b33;
+  --un-panel: #18284a;
+  --un-line: #33466f;
+  --un-text: #f3f6fc;
+  --un-muted: #b7c3dc;
+  --un-accent: #5aa2ff;
+  --un-valid: #3ddc84;
+  --un-dup: #ff7a7a;
+  --un-zero: #6b7a99;
+  --un-win: #f5c542;
+  --un-warn: #ffcf66;
+  background: var(--un-bg);
+  color: var(--un-text);
+  border-radius: var(--dk-radius, 10px);
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.g-un p { margin: 0; }
+.g-un .is-hidden { display: none !important; }
+.g-un__top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.g-un__round { font-weight: 800; letter-spacing: .04em; }
+.g-un__phase { color: var(--un-muted); font-size: 14px; }
+.g-un__title { font-weight: 800; }
+.g-un__lead { font-size: 18px; font-weight: 700; }
+.g-un__big { font-size: 28px; font-weight: 800; }
+.g-un__muted { color: var(--un-muted); font-size: 14px; }
+.g-un__rules { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+.g-un__timer { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 22px; padding: 2px 10px; border: 2px solid var(--un-line); border-radius: 8px; }
+.g-un__timer.is-urgent { color: var(--un-bg); background: var(--un-warn); border-color: var(--un-warn); animation: g-un-pulse 1s ease-in-out infinite; }
+.g-un__timer.is-paused { color: var(--un-warn); border-style: dashed; }
+@keyframes g-un-pulse { 50% { transform: scale(1.06); } }
+
+.g-un__notice { background: var(--un-panel); border: 1px solid var(--un-line); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
+.g-un__notice--ok { border-color: var(--un-valid); }
+.g-un__notice--warn { border-color: var(--un-warn); color: var(--un-warn); }
+.g-un__notice--error { border-color: var(--un-dup); color: #ffd0d0; }
+
+/* 참가자: 숫자 4열 × 5행 */
+.g-un__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+.g-un__num {
+  min-height: 52px; min-width: 0; border-radius: 10px; border: 2px solid var(--un-line); background: var(--un-panel); color: var(--un-text);
+  font: inherit; font-size: 22px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+}
+.g-un__num:hover:not(:disabled) { border-color: var(--un-accent); }
+.g-un__num.is-selected { background: var(--un-accent); border-color: #cfe3ff; color: #06122b; box-shadow: 0 0 0 3px rgba(90, 162, 255, .35); }
+.g-un__num.is-confirmed::after { content: ' ✓'; font-size: 14px; }
+.g-un__num:disabled { opacity: .5; cursor: not-allowed; }
+.g-un__actions { display: grid; }
+.g-un__submit {
+  min-height: 52px; border-radius: 10px; border: 0; background: var(--un-valid); color: #06200f; font: inherit; font-size: 18px; font-weight: 800; cursor: pointer;
+}
+.g-un__submit:disabled { background: var(--un-zero); color: #e4e9f3; cursor: not-allowed; }
+.g-un :focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+
+.g-un__card { background: var(--un-panel); border: 1px solid var(--un-line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.g-un__card.is-win { border-color: var(--un-win); }
+.g-un__dl { display: grid; grid-template-columns: max-content 1fr; gap: 6px 12px; margin: 0; }
+.g-un__dl dt { color: var(--un-muted); }
+.g-un__dl dd { margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.g-un__next { color: var(--un-muted); }
+
+/* 진행자 */
+.g-un__hoststatus { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 17px; }
+.g-un__controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.g-un__btn {
+  min-height: 44px; padding: 8px 16px; border-radius: 10px; border: 2px solid var(--un-line); background: var(--un-panel); color: var(--un-text);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.g-un__btn--primary { background: var(--un-accent); border-color: var(--un-accent); color: #06122b; }
+.g-un__btn--danger { border-color: var(--un-dup); color: #ffd0d0; }
+.g-un__btn--ghost { background: transparent; }
+.g-un__btn:disabled { opacity: .55; cursor: not-allowed; }
+.g-un__confirm { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 10px; border: 1px dashed var(--un-dup); border-radius: 10px; }
+.g-un__history summary { cursor: pointer; color: var(--un-muted); }
+
+/* 결과 막대그래프 (숫자 1~20) */
+.g-un__chart-wrap { display: grid; gap: 10px; }
+.g-un__chart { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(20, minmax(0, 1fr)); gap: 4px; align-items: end; }
+.g-un__col { display: grid; grid-template-rows: auto 160px auto auto; gap: 4px; text-align: center; min-width: 0; font-size: 12px; }
+.g-un__bar-wrap { display: flex; align-items: flex-end; justify-content: center; height: 100%; }
+.g-un__bar { width: 80%; border-radius: 4px 4px 0 0; background: var(--un-zero); transition: height .35s ease-out; }
+.g-un__count { font-weight: 700; }
+.g-un__num-label { font-weight: 800; font-size: 15px; border-top: 2px solid var(--un-line); padding-top: 2px; }
+.g-un__st { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: clip; }
+.g-un__col.is-zero .g-un__bar { background: var(--un-zero); }
+.g-un__col.is-zero { color: var(--un-muted); }
+.g-un__col.is-valid .g-un__bar { background: var(--un-valid); }
+.g-un__col.is-valid .g-un__st { color: var(--un-valid); }
+.g-un__col.is-dup .g-un__bar { background: repeating-linear-gradient(45deg, var(--un-dup) 0 6px, #c94a4a 6px 12px); }
+.g-un__col.is-dup .g-un__st { color: var(--un-dup); }
+.g-un__col.is-win .g-un__bar { background: var(--un-win); box-shadow: 0 0 18px rgba(245, 197, 66, .7); }
+.g-un__col.is-win .g-un__st, .g-un__col.is-win .g-un__num-label { color: var(--un-win); }
+.g-un__col.is-hidden { visibility: hidden; }
+.g-un__chart-wrap.is-done .g-un__col.is-win { animation: g-un-pop .6s ease-out 1; }
+@keyframes g-un-pop { 40% { transform: translateY(-8px); } }
+.g-un__step { font-size: 18px; font-weight: 700; min-height: 1.5em; }
+
+.g-un__banner { border-radius: 12px; padding: 16px; text-align: center; display: grid; gap: 6px; border: 2px solid var(--un-line); background: var(--un-panel); }
+.g-un__banner--win { border-color: var(--un-win); }
+.g-un__banner-kicker { letter-spacing: .12em; font-weight: 800; color: var(--un-win); }
+.g-un__banner--none .g-un__banner-kicker { color: var(--un-muted); }
+.g-un__banner-main { font-size: 26px; font-weight: 800; }
+.g-un__banner-main strong { color: var(--un-win); font-size: 1.4em; }
+.g-un__banner-name { font-size: 20px; overflow-wrap: anywhere; }
+
+.g-un__final { display: grid; gap: 10px; }
+.g-un__final-champ { font-size: 22px; font-weight: 800; overflow-wrap: anywhere; }
+.g-un__final-champ strong { color: var(--un-win); }
+.g-un__ranking { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 6px; }
+.g-un__ranking li { display: grid; grid-template-columns: 3.2em 1fr auto; gap: 8px; padding: 6px 10px; background: var(--un-panel); border-radius: 8px; border: 1px solid var(--un-line); }
+.g-un__ranking li.is-me { border-color: var(--un-accent); box-shadow: 0 0 0 2px rgba(90, 162, 255, .4); }
+.g-un__rank { font-weight: 800; }
+.g-un__rank-name { overflow-wrap: anywhere; }
+.g-un__rank-wins { font-weight: 800; color: var(--un-win); }
+
+/* 참가자 모바일: 막대그래프 없음, 순위는 한 열, 결과 카드는 항목 이름 아래에 값 */
+.g-un--player .g-un__ranking { grid-template-columns: 1fr; }
+.g-un--player .g-un__dl { grid-template-columns: 1fr; gap: 0; }
+.g-un--player .g-un__dl dt { font-size: 14px; margin-top: 8px; }
+.g-un--player .g-un__dl dt:first-child { margin-top: 0; }
+.g-un--player .g-un__dl dd { font-size: 18px; }
+
+/* 공개 화면 (1920×1080, 강의실 뒷자리 가독성) */
+.g-un--display { padding: 28px 36px; gap: 22px; font-size: 26px; }
+.g-un--display .g-un__top { font-size: 34px; }
+.g-un--display .g-un__lead { font-size: 40px; }
+.g-un--display .g-un__big { font-size: 64px; }
+.g-un--display .g-un__rules { font-size: 38px; gap: 14px; }
+.g-un--display .g-un__timer--big { font-size: 200px; line-height: 1; text-align: center; border-width: 4px; padding: 10px 24px; justify-self: center; }
+.g-un--display .g-un__subcount { font-size: 48px; font-weight: 800; text-align: center; }
+.g-un__progress { height: 22px; border-radius: 11px; background: var(--un-panel); border: 1px solid var(--un-line); overflow: hidden; }
+.g-un__progress span { display: block; height: 100%; background: var(--un-accent); transition: width .3s; }
+.g-un--display .g-un__col { grid-template-rows: auto 380px auto auto; font-size: 24px; gap: 6px; }
+.g-un--display .g-un__num-label { font-size: 34px; }
+.g-un--display .g-un__st { font-size: 19px; }
+.g-un--display .g-un__chart { gap: 10px; }
+.g-un--display .g-un__step { font-size: 40px; text-align: center; }
+.g-un--display .g-un__banner { padding: 24px; }
+.g-un--display .g-un__banner-kicker { font-size: 40px; }
+.g-un--display .g-un__banner-main { font-size: 64px; }
+.g-un--display .g-un__banner-name { font-size: 52px; }
+.g-un--display .g-un__final-champ { font-size: 56px; }
+.g-un--display .g-un__ranking { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); font-size: 26px; }
+.g-un--display .g-un__notice { font-size: 30px; }
+
+@media (max-width: 480px) {
+  .g-un { padding: 12px; }
+  .g-un__col { grid-template-rows: auto 120px auto auto; font-size: 10px; }
+  .g-un__st { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .g-un *, .g-un *::before, .g-un *::after { animation: none !important; transition: none !important; }
+}

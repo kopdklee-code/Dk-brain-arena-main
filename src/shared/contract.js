@@ -17,9 +17,17 @@ export function assertGameModule(game) {
   for (const name of REQUIRED_RULE_EXPORTS) {
     if (typeof rules[name] !== 'function') throw new Error(`${manifest.gameId}: rules.${name} 함수 누락`);
   }
+  // 선택 계약: 참가자 개인 입력 (동시 제출이 많은 게임용). 있으면 형식 검사
+  if (rules.playerInput !== undefined) {
+    const pi = rules.playerInput;
+    if (!pi || !Array.isArray(pi.actions) || !pi.actions.length || typeof pi.execute !== 'function' || typeof pi.key !== 'function') {
+      throw new Error(`${manifest.gameId}: rules.playerInput 은 { actions:[...], execute(), key() } 형식이어야 합니다.`);
+    }
+  }
   for (const d of manifest.distributions) {
     if (!KNOWN_DISTRIBUTIONS.includes(d)) throw new Error(`${manifest.gameId}: 알 수 없는 배포 방식 ${d}`);
   }
+  if ('listed' in manifest && typeof manifest.listed !== 'boolean') throw new Error(`${manifest.gameId}: manifest.listed 는 true/false 입니다.`);
   const { min, max } = manifest.players;
   if (!Number.isInteger(min) || !Number.isInteger(max) || min < 1 || max < min) {
     throw new Error(`${manifest.gameId}: players.min/max 가 올바르지 않습니다.`);

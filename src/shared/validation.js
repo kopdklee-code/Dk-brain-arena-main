@@ -28,7 +28,7 @@ export function sanitizeAction(action) {
   if (!action || typeof action !== 'object' || Array.isArray(action)) return null;
   if (typeof action.type !== 'string' || action.type.length > 40) return null;
   const out = { type: action.type };
-  for (const key of ['round', 'value']) {
+  for (const key of ['round', 'attempt', 'value']) {
     if (key in action) {
       if (typeof action[key] !== 'number' || !Number.isFinite(action[key])) return null;
       out[key] = action[key];

@@ -7,12 +7,16 @@ export function createLocalSession({ rules, players, config, hostActions = ['clo
   const listeners = new Set();
   let state = null;
   let log = [];
+  let inputs = {}; // 참가자 개인 입력 (rules.playerInput 이 있을 때)
+  let inputCounts = {};
 
   function start() {
-    const created = rules.createGame({ players, config });
+    const created = rules.createGame({ players, config, now: Date.now() });
     if (!created.ok) throw new Error(created.error.message);
     state = created.state;
     log = [];
+    inputs = {};
+    inputCounts = {};
     emit();
   }
 
@@ -22,6 +26,7 @@ export function createLocalSession({ rules, players, config, hostActions = ['clo
       status: result.finished ? 'finished' : 'playing',
       view: rules.getView(state, { role: 'local' }),
       result,
+      inputCounts: { ...inputCounts },
     };
   }
 
@@ -31,7 +36,17 @@ export function createLocalSession({ rules, players, config, hostActions = ['clo
   }
 
   function dispatch(actor, action) {
-    const res = rules.executeAction(state, actor, action);
+    if (actor.role === 'player' && rules.playerInput?.actions.includes(action.type)) {
+      const out = rules.playerInput.execute(state, inputs[actor.playerId] ?? null, actor, action, { now: Date.now() });
+      log.push({ seq: log.length + 1, actor, action, ok: out.ok, error: out.ok ? null : out.error });
+      if (!out.ok) return { ok: false, error: out.error };
+      inputs = { ...inputs, [actor.playerId]: out.input };
+      const key = out.newInWindow ? rules.playerInput.key(state) : null;
+      if (key) inputCounts = { ...inputCounts, [key]: (inputCounts[key] || 0) + 1 };
+      emit();
+      return { ok: true };
+    }
+    const res = rules.executeAction(state, actor, action, { now: Date.now(), inputs });
     log.push({ seq: log.length + 1, actor, action, ok: res.ok, error: res.ok ? null : res.error });
     if (res.ok) {
       state = res.state;

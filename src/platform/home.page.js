@@ -3,7 +3,7 @@ import { listManifests } from '../games/registry.js';
 import { el, $, SCREEN_LABEL } from './ui.js';
 
 const list = $('[data-game-list]');
-const manifests = listManifests();
+const manifests = listManifests({ listedOnly: true });
 if (!manifests.length) {
   list.append(el('p', { class: 'dk-muted', text: '등록된 게임이 없습니다.' }));
 }
