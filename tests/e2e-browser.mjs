@@ -76,7 +76,7 @@ async function main() {
 
     // 홈·게임 목록·상세
     await host.page.goto(`${BASE}/index.html`);
-    // 등록된 게임만 표시 (샘플 + 단 하나의 숫자). 샘플은 개발 검증용 표시
+    // 등록된 게임만 표시 (샘플 + 가위바위보 하나빼기). 샘플은 개발 검증용 표시
     assert.equal(await host.page.locator('[data-game-id]').count(), 2, '등록된 게임 2개 표시');
     const demoCard = host.page.locator('[data-game-id="demo-number-choice"]');
     assert.match(await demoCard.innerText(), /개발 검증용/);

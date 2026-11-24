@@ -1,0 +1,172 @@
+/* 가위바위보 하나빼기 — 게임 전용 스타일 (.g-rps 범위). 다크 네이비·차콜, 높은 대비. 결과는 색 + 글자로 구분 */
+.g-rps {
+  --rps-bg: #121a33;
+  --rps-panel: #1d2a4d;
+  --rps-line: #3a4c78;
+  --rps-text: #f3f6fc;
+  --rps-muted: #b7c3dc;
+  --rps-accent: #5aa2ff;
+  --rps-win: #3ddc84;
+  --rps-lose: #ff7a7a;
+  --rps-draw: #c9b6ff;
+  --rps-gold: #f5c542;
+  --rps-warn: #ffcf66;
+  background: var(--rps-bg);
+  color: var(--rps-text);
+  border-radius: var(--dk-radius, 10px);
+  padding: 16px;
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+}
+.g-rps p { margin: 0; }
+.g-rps .is-hidden { display: none !important; }
+.g-rps__top { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.g-rps__round { font-weight: 800; letter-spacing: .03em; }
+.g-rps__alive { color: var(--rps-muted); font-weight: 700; }
+.g-rps__phase { color: var(--rps-muted); font-size: 14px; }
+.g-rps__title { font-weight: 800; }
+.g-rps__lead { font-size: 18px; font-weight: 700; }
+.g-rps__big { font-size: 28px; font-weight: 800; }
+.g-rps__muted { color: var(--rps-muted); font-size: 14px; }
+.g-rps__kicker { letter-spacing: .08em; font-weight: 800; color: var(--rps-gold); font-size: 14px; }
+.g-rps__rules { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; }
+
+.g-rps__timer { font-variant-numeric: tabular-nums; font-weight: 800; font-size: 22px; padding: 2px 10px; border: 2px solid var(--rps-line); border-radius: 8px; }
+.g-rps__timer.is-urgent { color: var(--rps-bg); background: var(--rps-warn); border-color: var(--rps-warn); animation: g-rps-pulse 1s ease-in-out infinite; }
+.g-rps__timer.is-paused { color: var(--rps-warn); border-style: dashed; }
+@keyframes g-rps-pulse { 50% { transform: scale(1.06); } }
+
+.g-rps__notice { background: var(--rps-panel); border: 1px solid var(--rps-line); border-radius: 8px; padding: 10px 12px; line-height: 1.5; }
+.g-rps__notice--ok { border-color: var(--rps-win); }
+.g-rps__notice--warn { border-color: var(--rps-warn); color: var(--rps-warn); }
+.g-rps__notice--error { border-color: var(--rps-lose); color: #ffd0d0; }
+
+/* 손 고르기 버튼 (참가자 3개 또는 2개) */
+.g-rps__picker { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.g-rps__picker--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.g-rps__pick {
+  min-height: 96px; min-width: 0; display: grid; place-items: center; gap: 2px; border-radius: 14px; border: 3px solid var(--rps-line);
+  background: var(--rps-panel); color: var(--rps-text); font: inherit; font-size: 17px; font-weight: 800; cursor: pointer; touch-action: manipulation;
+}
+.g-rps__pick .g-rps__icon { font-size: 40px; line-height: 1; }
+.g-rps__pick:hover:not(:disabled) { border-color: var(--rps-accent); }
+.g-rps__pick.is-selected { background: var(--rps-accent); border-color: #d6e7ff; color: #06122b; box-shadow: 0 0 0 3px rgba(90, 162, 255, .4); }
+.g-rps__pick.is-selected::after { content: '✓ 선택'; font-size: 13px; }
+.g-rps__pick:disabled { opacity: .5; cursor: not-allowed; }
+.g-rps__submit {
+  min-height: 52px; border-radius: 10px; border: 0; background: var(--rps-win); color: #06200f; font: inherit; font-size: 18px; font-weight: 800; cursor: pointer;
+}
+.g-rps__submit:disabled { background: #5d6b8a; color: #e4e9f3; cursor: not-allowed; }
+.g-rps :focus-visible { outline: 3px solid #ffffff; outline-offset: 2px; }
+
+.g-rps__hostpair, .g-rps__hostone { display: grid; gap: 6px; justify-items: center; text-align: center; }
+.g-rps__hands { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+.g-rps__hand { display: inline-grid; justify-items: center; padding: 6px 12px; border-radius: 12px; border: 2px solid var(--rps-line); background: var(--rps-panel); min-width: 72px; }
+.g-rps__hand .g-rps__icon { font-size: 34px; line-height: 1.1; }
+.g-rps__hname { font-weight: 800; }
+.g-rps__hand.is-dropped { opacity: .35; text-decoration: line-through; }
+.g-rps__hand.is-kept { border-color: var(--rps-gold); }
+.g-rps__hand.is-big { padding: 10px 22px; }
+.g-rps__hand.is-big .g-rps__icon { font-size: 56px; }
+
+.g-rps__card { background: var(--rps-panel); border: 1px solid var(--rps-line); border-radius: 10px; padding: 12px; display: grid; gap: 8px; }
+.g-rps__card.is-win { border-color: var(--rps-win); }
+.g-rps__card.is-out, .g-rps__card--out { border-color: var(--rps-lose); }
+.g-rps__dl { display: grid; grid-template-columns: 1fr; gap: 0; margin: 0; }
+.g-rps__dl dt { color: var(--rps-muted); font-size: 14px; margin-top: 8px; }
+.g-rps__dl dt:first-child { margin-top: 0; }
+.g-rps__dl dd { margin: 0; font-weight: 800; font-size: 18px; overflow-wrap: anywhere; }
+.g-rps__next { color: var(--rps-muted); }
+
+/* 진행자 */
+.g-rps__hoststatus { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; font-size: 17px; }
+.g-rps__hostpick { display: grid; gap: 8px; padding: 10px; border: 1px dashed var(--rps-line); border-radius: 10px; }
+.g-rps__hostpick .g-rps__pick { min-height: 60px; font-size: 16px; }
+.g-rps__controls { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.g-rps__btn {
+  min-height: 44px; padding: 8px 16px; border-radius: 10px; border: 2px solid var(--rps-line); background: var(--rps-panel); color: var(--rps-text);
+  font: inherit; font-weight: 700; cursor: pointer;
+}
+.g-rps__btn--primary { background: var(--rps-accent); border-color: var(--rps-accent); color: #06122b; }
+.g-rps__btn--danger { border-color: var(--rps-lose); color: #ffd0d0; }
+.g-rps__btn--ghost { background: transparent; }
+.g-rps__btn:disabled { opacity: .55; cursor: not-allowed; }
+.g-rps__confirm { display: inline-flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 6px 10px; border: 1px dashed var(--rps-lose); border-radius: 10px; }
+.g-rps__history summary { cursor: pointer; color: var(--rps-muted); }
+
+/* 결과 공개 */
+.g-rps__reveal { display: grid; gap: 14px; }
+.g-rps__hostone .g-rps__hand { border-color: var(--rps-gold); animation: g-rps-pop .5s ease-out 1; }
+@keyframes g-rps-pop { 0% { transform: scale(.6); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+.g-rps__rows { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.g-rps__row { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: 'hand bar cnt' 'hand out out'; gap: 4px 12px; align-items: center; padding: 8px 10px; border-radius: 10px; background: var(--rps-panel); border: 2px solid var(--rps-line); }
+.g-rps__row .g-rps__hand { grid-area: hand; }
+.g-rps__barwrap { grid-area: bar; height: 14px; background: rgba(255, 255, 255, .08); border-radius: 7px; overflow: hidden; }
+.g-rps__bar { display: block; height: 100%; border-radius: 7px; transition: width .4s ease-out; }
+.g-rps__cnt { grid-area: cnt; font-weight: 800; }
+.g-rps__out { grid-area: out; font-weight: 800; }
+.g-rps__row.is-win { border-color: var(--rps-win); }
+.g-rps__row.is-win .g-rps__bar { background: var(--rps-win); }
+.g-rps__row.is-win .g-rps__out { color: var(--rps-win); }
+.g-rps__row.is-draw .g-rps__bar { background: var(--rps-draw); }
+.g-rps__row.is-draw .g-rps__out { color: var(--rps-draw); }
+.g-rps__row.is-lose .g-rps__bar { background: repeating-linear-gradient(45deg, var(--rps-lose) 0 6px, #c94a4a 6px 12px); }
+.g-rps__row.is-lose .g-rps__out { color: var(--rps-lose); }
+.g-rps__banner { border-radius: 12px; padding: 16px; text-align: center; display: grid; gap: 6px; border: 2px solid var(--rps-line); background: var(--rps-panel); animation: g-rps-pop .5s ease-out 1; }
+.g-rps__banner--win { border-color: var(--rps-gold); }
+.g-rps__banner--none .g-rps__kicker { color: var(--rps-muted); }
+.g-rps__banner-main { font-size: 26px; font-weight: 800; }
+.g-rps__banner-main strong { color: var(--rps-gold); }
+.g-rps__banner-sub { font-size: 18px; }
+.g-rps__names { color: var(--rps-muted); overflow-wrap: anywhere; }
+
+.g-rps__final { display: grid; gap: 10px; }
+.g-rps__final-champ { font-size: 22px; font-weight: 800; overflow-wrap: anywhere; }
+.g-rps__final-champ strong { color: var(--rps-gold); }
+.g-rps__ranking { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px; }
+.g-rps__ranking li { display: grid; grid-template-columns: 3.2em 1fr auto; gap: 8px; padding: 6px 10px; background: var(--rps-panel); border-radius: 8px; border: 1px solid var(--rps-line); }
+.g-rps__ranking li.is-me { border-color: var(--rps-accent); box-shadow: 0 0 0 2px rgba(90, 162, 255, .4); }
+.g-rps__rank { font-weight: 800; }
+.g-rps__rank-name { overflow-wrap: anywhere; }
+.g-rps__rank-info { color: var(--rps-muted); font-size: 14px; }
+.g-rps--player .g-rps__ranking { grid-template-columns: 1fr; }
+.g-rps__progress { height: 22px; border-radius: 11px; background: var(--rps-panel); border: 1px solid var(--rps-line); overflow: hidden; }
+.g-rps__progress span { display: block; height: 100%; background: var(--rps-accent); transition: width .3s; }
+
+/* 공개 화면 (1920×1080, 강의실 뒷자리 가독성) */
+.g-rps--display { padding: 28px 36px; gap: 22px; font-size: 26px; }
+.g-rps--display .g-rps__top { font-size: 34px; }
+.g-rps--display .g-rps__lead { font-size: 44px; text-align: center; }
+.g-rps--display .g-rps__big { font-size: 96px; text-align: center; }
+.g-rps--display .g-rps__kicker { font-size: 28px; }
+.g-rps--display .g-rps__rules { font-size: 36px; gap: 14px; }
+.g-rps--display .g-rps__timer--big { font-size: 180px; line-height: 1; text-align: center; border-width: 4px; padding: 10px 24px; justify-self: center; }
+.g-rps--display .g-rps__subcount { font-size: 48px; font-weight: 800; text-align: center; }
+.g-rps--display .g-rps__hand { min-width: 160px; padding: 12px 24px; }
+.g-rps--display .g-rps__hand .g-rps__icon { font-size: 80px; }
+.g-rps--display .g-rps__hand.is-big .g-rps__icon { font-size: 120px; }
+.g-rps--display .g-rps__hname { font-size: 34px; }
+.g-rps--display .g-rps__row { grid-template-columns: 220px 1fr 140px 300px; grid-template-areas: 'hand bar cnt out'; padding: 12px 18px; }
+.g-rps--display .g-rps__row .g-rps__hand { min-width: 0; padding: 4px 10px; border: 0; background: none; display: inline-flex; gap: 12px; align-items: center; }
+.g-rps--display .g-rps__row .g-rps__hand .g-rps__icon { font-size: 48px; }
+.g-rps--display .g-rps__barwrap { height: 34px; border-radius: 17px; }
+.g-rps--display .g-rps__cnt, .g-rps--display .g-rps__out { font-size: 34px; }
+.g-rps--display .g-rps__banner { padding: 24px; }
+.g-rps--display .g-rps__banner-main { font-size: 64px; }
+.g-rps--display .g-rps__banner-sub { font-size: 40px; }
+.g-rps--display .g-rps__names { font-size: 30px; }
+.g-rps--display .g-rps__final-champ { font-size: 60px; text-align: center; }
+.g-rps--display .g-rps__ranking { grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); font-size: 26px; }
+.g-rps--display .g-rps__notice { font-size: 30px; }
+
+@media (max-width: 480px) {
+  .g-rps { padding: 12px; }
+  .g-rps__pick { min-height: 88px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .g-rps *, .g-rps *::before, .g-rps *::after { animation: none !important; transition: none !important; }
+}
+/* 참가자 모바일 결과 배너는 줄바꿈 없이 */
+.g-rps--player .g-rps__banner-main { font-size: 20px; }
+.g-rps--player .g-rps__hand.is-big .g-rps__icon { font-size: 44px; }

@@ -42,7 +42,7 @@ src/
     views.js                 브라우저 전용 화면 모듈 등록
     demo-number-choice/      검증용 샘플 (isDemo: true)
       manifest.json  rules.js  view.js  game.css  assets/  README.md(운영 안내)
-    unique-number/           「단 하나의 숫자」 (29명·3라운드, platform 전용, 판매 게임)
+    rps-minus-one/           「가위바위보 하나빼기」 (진행자 대 전원, 최후의 1인, 최대 29명, platform 전용)
       manifest.json  rules.js  view.js  game.css  assets/  README.md(규칙·행동·데이터·운영)
   shared/
     contract.js              공통 계약 검사, 플랫폼 방 상태(lobby/playing/finished)
@@ -61,7 +61,7 @@ scripts/build.mjs            functions | hosting | packages | all
 scripts/emulators-exec.mjs   다수 동시 접속 테스트용 에뮬레이터 실행 (작업 프로세스 로딩 제한 연장)
 tests/                       플랫폼·샘플 테스트 (단위·통합·E2E·오프라인·산출물 검사)
   helpers/                   에뮬레이터 공용 도우미 (독립 세션 생성, 서버 전용 문서 검증 읽기)
-  games/<gameId>/            게임별 테스트 (unique-number: 단위·29명 시나리오·브라우저 E2E)
+  games/<gameId>/            게임별 테스트 (rps-minus-one: 단위·29명 시나리오·브라우저 E2E)
 firestore.rules              클라이언트 쓰기 전면 금지, 문서 단위 읽기 권한
 ```
 
@@ -113,7 +113,7 @@ firestore.rules              클라이언트 쓰기 전면 금지, 문서 단위
 3. 참가자 입장 코드·닉네임 입장(또는 참가 QR로 코드가 채워진 입장 화면), 재접속 복구, 나가기(구독 해제)
 4. 공개 화면 (빔프로젝터용, 읽기 전용)
 5. 검증용 샘플 `demo-number-choice`
-5-1. 첫 게임 「단 하나의 숫자」 `unique-number` (지시문 v1.1): 29명, 1~20, 3라운드, 40초 서버 기준 마감, 일시정지·재개, 마감 후 무효화·재진행, 단계적 결과 공개, 공동 순위. 플랫폼 공통 보완: 서버 시각 전달·보정, 참가자 개인 입력 계약, 경합 없는 입장, 시작 전 점검, 로컬 주소 QR 경고, 새 게임방 버튼
+5-1. 첫 게임 「가위바위보 하나빼기」 `rps-minus-one` (사용자 확정 규칙, 2026-11-24 「단 하나의 숫자」를 대체): 진행자 대 참가자 전원, ① 두 손(20초) ② 하나 빼기(15초), 진행자 손을 이긴 사람만 생존, 미제출 탈락, 전원 탈락이면 라운드 무효, 최후의 1인까지. 서버 기준 마감, 일시정지·재개, 마감 후 무효화·재진행, 단계적 결과 공개. 플랫폼 공통 보완: 서버 시각 전달·보정, 참가자 개인 입력 계약, 경합 없는 입장, 시작 전 점검, 로컬 주소 QR 경고, 새 게임방 버튼
 6. 같은 원본에서 `standalone.html`과 ZIP 생성
 7. 로컬 실행 방법과 검증 결과 문서
 
@@ -122,5 +122,5 @@ firestore.rules              클라이언트 쓰기 전면 금지, 문서 단위
 - 결제·구매 권한 검증, Cloud Storage 유료 파일 보관·다운로드
 - 구매자 Firebase 설치형 패키지 (Hosting + Functions + 규칙 + 설정 + 안내)
 - 구독, 토너먼트, 기관 관리, AI 분석, 자체 게임 편집기
-- 방 정리(TTL)·데이터 보존 기간 결정, App Check, 플랫폼 전체 레이트 리밋 (게임 안의 반복 변경 제한은 `unique-number`에 있음)
+- 방 정리(TTL)·데이터 보존 기간 결정, App Check, 플랫폼 전체 레이트 리밋 (게임 안의 반복 변경 제한은 `rps-minus-one`에 있음)
 - 실제 외부 로그인 제공자(Google 등) 설정

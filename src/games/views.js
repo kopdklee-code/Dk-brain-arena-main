@@ -1,10 +1,10 @@
 // 브라우저 전용: 게임별 화면 모듈 등록. 게임을 추가하면 registry.js 와 함께 여기에 한 줄을 추가한다.
 import * as demoNumberChoiceView from './demo-number-choice/view.js';
-import * as uniqueNumberView from './unique-number/view.js';
+import * as rpsMinusOneView from './rps-minus-one/view.js';
 
 export const VIEWS = Object.freeze({
   'demo-number-choice': demoNumberChoiceView,
-  'unique-number': uniqueNumberView,
+  'rps-minus-one': rpsMinusOneView,
 });
 
 export function getView(gameId) {
