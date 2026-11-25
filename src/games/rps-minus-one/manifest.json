@@ -1,9 +1,9 @@
 {
   "gameId": "rps-minus-one",
   "title": "가위바위보 하나빼기",
-  "description": "진행자와 참가자 전원이 겨루는 가위바위보 하나빼기입니다. 두 손을 내고, 진행자 손을 본 뒤 하나를 남깁니다. 진행자를 이긴 사람만 살아남아 최후의 1인을 가립니다. 최대 29명.",
+  "description": "진행자와 참가자 전원이 겨루는 가위바위보 하나빼기입니다. 두 손을 내고, 진행자 손을 본 뒤 하나를 남깁니다. 진행자를 이긴 사람만 살아남아 최후의 1인을 가립니다. 최대 30명.",
   "gameVersion": "1.0.0",
-  "players": { "min": 2, "max": 29 },
+  "players": { "min": 2, "max": 30 },
   "screens": ["host", "player", "display"],
   "distributions": ["platform"],
   "isDemo": false,

@@ -1,6 +1,6 @@
 // 가위바위보 하나빼기 — 실제 브라우저 E2E (Hosting·Auth·Firestore·Functions 에뮬레이터, emulators:exec 안에서 실행).
 // 진행자(1280×860)·공개 화면(1920×1080)·모바일 참가자 3명(360·390·430px)은 Edge 로,
-// 나머지 26명은 독립 익명 세션의 서버 호출로 참가시켜 29명 방에서 최후의 1인까지 진행한다.
+// 나머지 27명은 독립 익명 세션의 서버 호출로 참가시켜 30명(최대 정원) 방에서 최후의 1인까지 진행한다.
 import { chromium } from 'playwright-core';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
@@ -14,7 +14,7 @@ import { client, closeAll, rid, sleep, warmUpFunctions, limitCalls } from '../..
 const BASE = process.env.DKBA_BASE_URL || 'http://127.0.0.1:5000';
 const ART = path.resolve('tests/.artifacts/rps-minus-one');
 const CHANNEL = process.env.DKBA_BROWSER_CHANNEL || 'msedge';
-const BOTS = 26;
+const BOTS = 27;
 const R = 1; const S = 2; const P = 3;
 const log = (...a) => console.log('[rps-e2e]', ...a);
 const errors = [];
@@ -92,8 +92,8 @@ async function main() {
       mob.push(p);
     }
     await Promise.all(bots.map(async (b, i) => { await sleep(i * 300); await b.call('joinRoom', { code, nickname: `봇${String(i + 1).padStart(2, '0')}` }); }));
-    await host.page.locator('.dk-muted', { hasText: '29 / 29명 입장' }).first().waitFor();
-    check('진행자 인원 29 / 29, 시작 전 점검 표시', /시작할 수 있음/.test(await host.page.locator('[data-precheck]').innerText()));
+    await host.page.locator('.dk-muted', { hasText: '30 / 30명 입장' }).first().waitFor();
+    check('진행자 인원 30 / 30, 시작 전 점검 표시', /시작할 수 있음/.test(await host.page.locator('[data-precheck]').innerText()));
     await shot(host, '01-host-lobby');
     await host.page.locator('[data-action="start-game"]').click();
     await display.page.locator('.g-rps__rules').waitFor();
@@ -145,9 +145,9 @@ async function main() {
     await mobTwo(mob[1], R, P);
     await mobTwo(mob[2], S, P);
     const b1 = await botsAct('pick-two', Array(BOTS).fill(13));
-    check('봇 26명 두 손 제출', b1.every((r) => r.ok));
-    await host.page.locator('[data-submitted-count="29"]').waitFor();
-    check('진행자: 제출 29명, 참가자 손은 보이지 않음', !(/가온.*보|g-rps__rows/.test(await host.page.locator('.g-rps').innerHTML())));
+    check('봇 27명 두 손 제출', b1.every((r) => r.ok));
+    await host.page.locator('[data-submitted-count="30"]').waitFor();
+    check('진행자: 제출 30명, 참가자 손은 보이지 않음', !(/가온.*보|g-rps__rows/.test(await host.page.locator('.g-rps').innerHTML())));
     await shot(display, 'r1-display-two');
     // 일시정지 → 차단 → 재개
     await host.page.locator('[data-action="pause"]').click();
@@ -248,7 +248,7 @@ async function main() {
     await host.page.locator('[data-action="finish-game"]').click();
     await display.page.locator('[data-final]').waitFor();
     check('최종 화면: 최후의 1인 가온, 순위 표시', /가온/.test(await display.page.locator('[data-champion]').innerText())
-      && (await display.page.locator('[data-ranking] li').count()) === 29);
+      && (await display.page.locator('[data-ranking] li').count()) === 30);
     await shot(display, 'final-display');
     await mob[0].page.locator('[data-my-rank="1"]').waitFor();
     await shot(mob[0], 'final-p360');

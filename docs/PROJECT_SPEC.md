@@ -42,7 +42,7 @@ src/
     views.js                 브라우저 전용 화면 모듈 등록
     demo-number-choice/      검증용 샘플 (isDemo: true)
       manifest.json  rules.js  view.js  game.css  assets/  README.md(운영 안내)
-    rps-minus-one/           「가위바위보 하나빼기」 (진행자 대 전원, 최후의 1인, 최대 29명, platform 전용)
+    rps-minus-one/           「가위바위보 하나빼기」 (진행자 대 전원, 최후의 1인, 최대 30명, platform 전용)
       manifest.json  rules.js  view.js  game.css  assets/  README.md(규칙·행동·데이터·운영)
   shared/
     contract.js              공통 계약 검사, 플랫폼 방 상태(lobby/playing/finished)
@@ -61,7 +61,7 @@ scripts/build.mjs            functions | hosting | packages | all
 scripts/emulators-exec.mjs   다수 동시 접속 테스트용 에뮬레이터 실행 (작업 프로세스 로딩 제한 연장)
 tests/                       플랫폼·샘플 테스트 (단위·통합·E2E·오프라인·산출물 검사)
   helpers/                   에뮬레이터 공용 도우미 (독립 세션 생성, 서버 전용 문서 검증 읽기)
-  games/<gameId>/            게임별 테스트 (rps-minus-one: 단위·29명 시나리오·브라우저 E2E)
+  games/<gameId>/            게임별 테스트 (rps-minus-one: 단위·30명 시나리오·브라우저 E2E)
 firestore.rules              클라이언트 쓰기 전면 금지, 문서 단위 읽기 권한
 ```
 

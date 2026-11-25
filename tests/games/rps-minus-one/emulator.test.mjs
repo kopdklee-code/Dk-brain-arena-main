@@ -1,5 +1,5 @@
-// 가위바위보 하나빼기 — 29명 통합 테스트 (Auth·Firestore·Functions 에뮬레이터, emulators:exec 안에서 실행).
-// 참가자 29명은 각각 독립 익명 세션. 같은 PC 에뮬레이터 자원 한계로 서버 동시 처리는 10개로 제한하고 요청은 동시에 발생시킨다.
+// 가위바위보 하나빼기 — 30명(최대 정원) 통합 테스트 (Auth·Firestore·Functions 에뮬레이터, emulators:exec 안에서 실행).
+// 참가자 30명은 각각 독립 익명 세션. 같은 PC 에뮬레이터 자원 한계로 서버 동시 처리는 10개로 제한하고 요청은 동시에 발생시킨다.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -9,7 +9,7 @@ import { client, closeAll, rid, readAsOwner, listAsOwner, sleep, percentile, war
 import * as rules from '../../../src/games/rps-minus-one/rules.js';
 
 const GAME = 'rps-minus-one';
-const N = 29;
+const N = 30;
 const EMULATOR_CONCURRENCY = Number(process.env.DKBA_EMULATOR_CONCURRENCY || 10);
 const { ROCK: R, SCISSORS: S, PAPER: P } = rules;
 const BEATEN_BY = { [R]: P, [S]: R, [P]: S }; // 진행자 손 → 그 손을 이기는 손
@@ -95,7 +95,7 @@ test.after(async () => {
   console.log('[rps] 측정값', JSON.stringify(out));
 });
 
-test('A) 29명 입장 (QR 현장 속도·중첩), 30번째 신규 거부, 재입장은 인원 증가 없음', async () => {
+test('A) 30명 입장 (QR 현장 속도·중첩), 31번째 신규 거부, 재입장은 인원 증가 없음', async () => {
   host = await client('host');
   ({ roomId, code } = await host.call('createRoom', { gameId: GAME, config: { twoSeconds: 20, oneSeconds: 15 } }));
   players = await Promise.all(Array.from({ length: N + 1 }, () => client('player')));
@@ -108,14 +108,14 @@ test('A) 29명 입장 (QR 현장 속도·중첩), 30번째 신규 거부, 재입
   assert.equal(metrics.joinOk, N);
   players.forEach((p, i) => { p.pid = { [roomId]: joins[i].value.playerId }; });
   assert.equal(new Set(players.map((p) => p.pid[roomId])).size, N);
-  await assert.rejects(extra.call('joinRoom', { code, nickname: '서른번째' }), (e) => e.code === 'functions/failed-precondition');
+  await assert.rejects(extra.call('joinRoom', { code, nickname: '서른한번째' }), (e) => e.code === 'functions/failed-precondition');
   metrics.joinRejected30th = true;
   assert.equal((await players[0].call('joinRoom', { code, nickname: '다른이름' })).rejoined, true);
   assert.equal((await getDocs(collection(host.db, 'rooms', roomId, 'players'))).size, N);
   metrics.participants = N;
 });
 
-test('B·C) 1라운드: 29명 동시 두 손 → 변경 → 마감 경계 → 진행자 두 손 공개 → 29명 동시 하나 빼기 → 판정 일치', async () => {
+test('B·C) 1라운드: 30명 동시 두 손 → 변경 → 마감 경계 → 진행자 두 손 공개 → 30명 동시 하나 빼기 → 판정 일치', async () => {
   assert.ok((await host.call('startGame', { roomId, requestId: rid() })).ok);
   const seen = new Map();
   const unsubs = players.map((p) => onSnapshot(doc(p.db, 'rooms', roomId), (s) => { if (s.data()?.publicView?.phase === 'PICK_TWO' && !seen.has(p.uid)) seen.set(p.uid, Date.now()); }));
@@ -126,12 +126,12 @@ test('B·C) 1라운드: 29명 동시 두 손 → 변경 → 마감 경계 → �
   let pv = await pubView();
   assertNoLeak(pv, '① 시작');
   assert.equal(pv.hostTwo, null, '① 동안 진행자 두 손 비공개');
-  // 29명 동시 두 손
+  // 30명 동시 두 손
   const twos = players.map((_, i) => [[R, S], [R, P], [S, P]][i % 3]);
   const first = await Promise.all(players.map((p, i) => act(p, roomId, 'pick-two', pair(...twos[i]))));
   assert.ok(first.every((r) => r.ok), JSON.stringify(first.filter((r) => !r.ok)));
   await sleep(300);
-  assert.equal(await liveCount(), N, '제출 인원 29');
+  assert.equal(await liveCount(), N, '제출 인원 30');
   // 10명 동시 변경, 3명 같은 두 손 재제출
   const changed = await Promise.all(players.slice(0, 10).map((p, i) => { twos[i] = [R, P]; return act(p, roomId, 'pick-two', pair(R, P)); }));
   assert.ok(changed.every((r) => r.ok));
@@ -151,12 +151,12 @@ test('B·C) 1라운드: 29명 동시 두 손 → 변경 → 마감 경계 → �
   pv = await pubView();
   assert.equal((await gameAction(host, roomId, { type: 'close-round', round: 1, attempt: 1, value: 2 })).error.code, 'too-early');
   await sleep(Math.max(0, pv.deadlineAt - Date.now() - 400));
-  const burst = players.slice(23, 29);
+  const burst = players.slice(24, 30);
   const offsets = [-250, -120, -40, 0, 40, 150];
   const res = await Promise.all(burst.map(async (p, i) => {
     await sleep(Math.max(0, pv.deadlineAt + offsets[i] - Date.now()));
     const r = await act(p, roomId, 'pick-two', pair(R, S));
-    if (r.ok) twos[23 + i] = [R, S]; else assert.equal(r.error.code, 'deadline-passed', JSON.stringify(r));
+    if (r.ok) twos[24 + i] = [R, S]; else assert.equal(r.error.code, 'deadline-passed', JSON.stringify(r));
     return r;
   }));
   console.log('[rps] 마감 경계', res.map((r, i) => `${offsets[i]}ms:${r.ok ? '수락' : r.error.code}`).join(', '));
@@ -171,7 +171,7 @@ test('B·C) 1라운드: 29명 동시 두 손 → 변경 → 마감 경계 → �
   assert.equal(pv.phase, 'PICK_ONE'); assert.deepEqual(pv.hostTwo, [R, P], '② 진행자 두 손 공개');
   assertNoLeak(pv, '②');
   assert.equal((await act(players[0], roomId, 'pick-two', pair(S, P))).error.code, 'step-closed', '② 에서 두 손 변경 불가');
-  // ② 진행자는 바위(R)를 남김 → 보(P)를 남긴 사람만 생존. 29명 동시 하나 빼기
+  // ② 진행자는 바위(R)를 남김 → 보(P)를 남긴 사람만 생존. 30명 동시 하나 빼기
   assert.ok((await hostDo('host-one', { value: R })).ok);
   const keeps = players.map((_, i) => (twos[i].includes(P) && i % 2 === 0 ? P : twos[i][0]));
   const r2 = await Promise.all(players.map((p, i) => act(p, roomId, 'keep-one', keeps[i])));

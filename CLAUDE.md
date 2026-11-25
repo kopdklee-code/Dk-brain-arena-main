@@ -46,8 +46,8 @@ npm run test:offline           # ZIP 해제 → standalone.html file:// 오프�
 npm run test:emulator          # 에뮬레이터 통합 테스트 (권한·중복·동시성·판정 일치)
 npm run test:e2e               # 브라우저 E2E (진행자·참가자 2명·공개 화면, Edge)
 npm run test:reconnect         # 연결 끊김·재연결 E2E (참가자 통신 차단·복원)
-npm run test:rps              # 가위바위보 하나빼기 29명 시나리오 (에뮬레이터, 동시 처리 10)
-npm run test:rps:e2e          # 가위바위보 하나빼기 브라우저 E2E (진행자·공개 1920·모바일 3폭 + 서버 호출 26명)
+npm run test:rps              # 가위바위보 하나빼기 30명 시나리오 (에뮬레이터, 동시 처리 10)
+npm run test:rps:e2e          # 가위바위보 하나빼기 브라우저 E2E (진행자·공개 1920·모바일 3폭 + 서버 호출 27명)
 ```
 요구 사항: **Node 22 (목표 런타임, functions engines·firebase.json nodejs22·.nvmrc)** — 없으면 `.tools/`에 공식 zip을 두고 그 창에서만 PATH 앞에 추가(README 참고). 전역 Node 변경 금지. Java 21(Firestore 에뮬레이터), Firebase CLI, Microsoft Edge(브라우저 검증. `DKBA_BROWSER_CHANNEL=chrome` 으로 변경 가능).
 

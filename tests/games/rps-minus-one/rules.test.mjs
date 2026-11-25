@@ -69,11 +69,11 @@ test('라운드 판정: 이긴 사람만 생존, 비김·짐·미제출 탈락, 
   assert.equal(none.wouldEliminate.length, 5);
 });
 
-test('설정·등록: 기본 20초·15초, 범위 밖 거부, 29명 platform 전용, 단 하나의 숫자는 등록 해제', () => {
+test('설정·등록: 기본 20초·15초, 범위 밖 거부, 30명 platform 전용, 단 하나의 숫자는 등록 해제', () => {
   assert.deepEqual(rules.normalizeConfig({}).config, { twoSeconds: 20, oneSeconds: 15 });
   for (const bad of [{ twoSeconds: 4 }, { oneSeconds: 121 }, { twoSeconds: 10.5 }, []]) assert.equal(rules.normalizeConfig(bad).ok, false);
   const g = GAMES['rps-minus-one'];
-  assert.ok(g); assert.equal(g.manifest.players.max, 29); assert.deepEqual(g.manifest.distributions, ['platform']);
+  assert.ok(g); assert.equal(g.manifest.players.max, 30); assert.deepEqual(g.manifest.distributions, ['platform']);
   assert.deepEqual(g.rules.playerInput.actions, ['pick-two', 'keep-one']);
   assert.equal(GAMES['unique-number'], undefined);
   assert.ok(GAMES['demo-number-choice']);
