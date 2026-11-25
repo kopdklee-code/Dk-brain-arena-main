@@ -3,10 +3,28 @@
 // 시각은 플랫폼이 준 now()(서버 기준 추정 시각)로 표시만 한다. 마감·판정은 서버가 서버 시각으로 한다.
 
 const HAND = {
-  1: { icon: '✊', name: '바위' },
-  2: { icon: '✌️', name: '가위' },
-  3: { icon: '✋', name: '보' },
+  1: { name: '바위' },
+  2: { name: '가위' },
+  3: { name: '보' },
 };
+// 손 아이콘 (자체 SVG — 기기마다 모양이 달라지는 이모지 대신). 색은 game.css 의 [data-hand] 변수로 정한다
+const HAND_SVG = {
+  1: '<rect x="11" y="24" width="42" height="31" rx="13"/><rect x="11" y="13" width="11.5" height="22" rx="5.75"/><rect x="21.5" y="11" width="11.5" height="23" rx="5.75"/><rect x="32" y="11" width="11.5" height="23" rx="5.75"/><rect x="42.5" y="14" width="10.5" height="21" rx="5.25"/><rect x="8" y="33" width="30" height="11" rx="5.5"/>',
+  2: '<rect x="15" y="3" width="11" height="36" rx="5.5" transform="rotate(-13 20.5 37)"/><rect x="33" y="3" width="11" height="36" rx="5.5" transform="rotate(13 38.5 37)"/><rect x="12" y="31" width="40" height="27" rx="13"/><rect x="29" y="33" width="22" height="10" rx="5"/><rect x="9" y="40" width="25" height="10" rx="5"/>',
+  3: '<rect x="21" y="12" width="9.5" height="28" rx="4.75"/><rect x="30.5" y="5" width="9.5" height="33" rx="4.75"/><rect x="40" y="6" width="9.5" height="32" rx="4.75"/><rect x="49.5" y="13" width="9" height="26" rx="4.5"/><rect x="11" y="29" width="10" height="22" rx="5" transform="rotate(-28 18 48)"/><rect x="19" y="28" width="40" height="30" rx="13"/>',
+};
+const TROPHY_SVG = '<path d="M18 8h28v14a14 14 0 0 1-28 0z"/><path d="M18 12H9v4a10 10 0 0 0 10 10M46 12h9v4a10 10 0 0 1-10 10" fill="none"/><path d="M28 35h8v9h-8z"/><path d="M20 46h24v8H20z"/>';
+function svgIcon(markup, cls) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('viewBox', '0 0 64 64');
+  svg.setAttribute('class', cls);
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+  svg.innerHTML = markup;
+  return svg;
+}
+const handIcon = (h) => svgIcon(HAND_SVG[h], 'g-rps__svg');
+const trophyIcon = () => svgIcon(TROPHY_SVG, 'g-rps__trophy');
 const BEATS = { 1: 2, 2: 3, 3: 1 };
 const outcomeOf = (me, host) => (me === host ? 'draw' : BEATS[me] === host ? 'win' : 'lose');
 const OUTCOME = { win: '이김 → 생존', draw: '비김 → 탈락', lose: '짐 → 탈락' };
@@ -44,7 +62,7 @@ export function formatRemaining(ms) {
   const sec = Math.max(0, Math.ceil(ms / 1000));
   return `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
 }
-const handLabel = (h) => `${HAND[h].icon} ${HAND[h].name}`;
+const handLabel = (h) => HAND[h].name;
 const pairCode = (two) => Math.min(...two) * 10 + Math.max(...two);
 const ERROR_SUBMIT = '손을 낸 것을 확인하지 못했습니다. 다시 시도해 주세요.';
 
@@ -154,17 +172,50 @@ export function mount(root, { role, send, now = () => Date.now() }) {
   // ── 공통 조각 ─────────────────────────────────────────
   function timerEl(big = false) {
     const node = el('div', { class: `g-rps__timer${big ? ' g-rps__timer--big' : ''}`, 'data-timer': true, role: 'timer', 'aria-live': 'off' });
+    // 공개 화면: 남은 시간을 원형 게이지로 (표시만. 마감 판정은 서버)
+    const label = big ? el('span', { class: 'g-rps__ring-label' }) : null;
+    const ring = big ? el('div', { class: 'g-rps__ring' }, [node, label]) : null;
     tickers.push(() => {
       const ms = remainingMs();
       if (ms === null) { node.textContent = ''; return; }
-      node.textContent = pub.paused ? `⏸ ${formatRemaining(ms)}` : formatRemaining(ms);
-      node.classList.toggle('is-urgent', !pub.paused && ms <= 5000);
+      const urgent = !pub.paused && ms <= 5000;
+      if (big) {
+        const total = (pub.phase === 'PICK_TWO' ? pub.twoSeconds : pub.oneSeconds) * 1000;
+        ring.style.setProperty('--p', total > 0 ? Math.max(0, Math.min(1, ms / total)).toFixed(4) : '0');
+        node.textContent = String(Math.max(0, Math.ceil(ms / 1000)));
+        label.textContent = pub.paused ? '일시정지' : '초 남음';
+        ring.classList.toggle('is-urgent', urgent);
+        ring.classList.toggle('is-paused', pub.paused);
+      } else {
+        node.textContent = pub.paused ? `⏸ ${formatRemaining(ms)}` : formatRemaining(ms);
+      }
+      node.classList.toggle('is-urgent', urgent);
       node.classList.toggle('is-paused', pub.paused);
+    });
+    return ring || node;
+  }
+  // 결과 공개 연출이 끝나기 전에는 생존 인원을 미리 보여 주지 않는다 (스포일러 방지)
+  function aliveChip() {
+    const node = el('span', { class: 'g-rps__chip g-rps__alive' });
+    tickers.push(() => {
+      const r = pub.phase === 'ROUND_RESULT' ? lastResult() : null;
+      const n = r && !revealDone(r) ? r.aliveBefore : pub.aliveCount;
+      node.textContent = `생존 ${n}명`;
     });
     return node;
   }
+  function seatsEl() {
+    const n = submitted();
+    return el('div', { class: 'g-rps__seats', 'aria-hidden': 'true' }, Array.from({ length: pub.aliveCount }, (_, i) => el('i', { class: i < n ? 'is-on' : '' })));
+  }
   const roundLabel = () => `ROUND ${pub.round}${pub.attempt > 1 ? ` · 재진행 ${pub.attempt}차` : ''}`;
-  const handEl = (h, cls = '') => el('span', { class: `g-rps__hand ${cls}`, 'data-hand': h }, [el('span', { class: 'g-rps__icon', 'aria-hidden': 'true', text: HAND[h].icon }), el('span', { class: 'g-rps__hname', text: HAND[h].name })]);
+  const HAND_TAG = { 'is-kept': '남김', 'is-dropped': '뺌' };
+  const handEl = (h, cls = '') => el('span', { class: `g-rps__hand ${cls}`, 'data-hand': h }, [
+    el('span', { class: 'g-rps__icon', 'aria-hidden': 'true' }, handIcon(h)),
+    el('span', { class: 'g-rps__hname', text: HAND[h].name }),
+    HAND_TAG[cls] ? el('span', { class: 'g-rps__tag', text: HAND_TAG[cls] }) : null,
+  ]);
+  const pickContent = (h) => [el('span', { class: 'g-rps__icon', 'aria-hidden': 'true' }, handIcon(h)), el('span', { class: 'g-rps__pname', text: HAND[h].name })];
 
   function restartNotice() {
     if (!pub?.restart || pub.restart.round !== pub.round || pub.phase === 'ROUND_RESULT' || pub.phase === 'GAME_FINISHED') return null;
@@ -172,7 +223,7 @@ export function mount(root, { role, send, now = () => Date.now() }) {
   }
   function rulesPanel() {
     return el('ol', { class: 'g-rps__rules' }, [
-      el('li', { text: '① 서로 다른 손 두 개를 냅니다. (예: ✊ 바위 + ✋ 보)' }),
+      el('li', { text: '① 서로 다른 손 두 개를 냅니다. (예: 바위 + 보)' }),
       el('li', { text: '② 진행자의 두 손이 공개되면, 내 두 손 중 하나를 남깁니다.' }),
       el('li', { text: '③ 진행자가 남긴 손을 이긴 사람만 살아남습니다. 비기거나 지면 탈락!' }),
       el('li', { text: '시간 안에 내지 않으면 탈락. 모두 탈락하게 되면 그 라운드는 무효. 최후의 1인까지 계속합니다.' }),
@@ -186,9 +237,10 @@ export function mount(root, { role, send, now = () => Date.now() }) {
     const total = Math.max(1, r.counts[1] + r.counts[2] + r.counts[3]);
     const rows = [1, 2, 3].map((h) => {
       const o = outcomeOf(h, r.hostOne);
+      const pct = Math.round((r.counts[h] / total) * 100);
       return el('li', { class: `g-rps__row is-${o}`, 'data-hand': h, 'data-count': r.counts[h] }, [
         handEl(h),
-        el('span', { class: 'g-rps__barwrap' }, el('span', { class: 'g-rps__bar', style: `width:${Math.round((r.counts[h] / total) * 100)}%` })),
+        el('span', { class: 'g-rps__barwrap' }, el('span', { class: 'g-rps__bar', style: `width:${r.counts[h] > 0 ? `max(${pct}%, 14px)` : '0'}` })),
         el('span', { class: 'g-rps__cnt', text: `${r.counts[h]}명` }),
         el('span', { class: 'g-rps__out', text: OUTCOME[o] }),
       ]);
@@ -206,7 +258,7 @@ export function mount(root, { role, send, now = () => Date.now() }) {
     } else if (r.survivorCount === 1) {
       banner = el('div', { class: 'g-rps__banner g-rps__banner--win', 'data-banner': 'winner' }, [
         el('p', { class: 'g-rps__kicker', text: 'LAST ONE STANDING' }),
-        el('p', { class: 'g-rps__banner-main' }, ['🏆 ', el('strong', { 'data-winner-name': true, text: r.survivorNames[0] })]),
+        el('p', { class: 'g-rps__banner-main' }, [trophyIcon(), el('strong', { 'data-winner-name': true, text: r.survivorNames[0] })]),
         el('p', { class: 'g-rps__banner-sub', text: '최후의 1인!' }),
       ]);
     } else {
@@ -216,7 +268,10 @@ export function mount(root, { role, send, now = () => Date.now() }) {
         compact ? null : el('p', { class: 'g-rps__names', text: r.survivorNames.join(' · ') }),
       ]);
     }
-    const wrap = el('div', { class: 'g-rps__reveal', 'data-reveal': true }, [hostTwoEl, hostOneEl, countsEl, note, banner]);
+    const wrap = el('div', { class: 'g-rps__reveal', 'data-reveal': true }, [
+      el('div', { class: 'g-rps__reveal-host' }, [hostTwoEl, hostOneEl]),
+      el('div', { class: 'g-rps__reveal-board' }, [countsEl, note, banner]),
+    ]);
     let last = '';
     tickers.push(() => {
       const t = revealElapsed(r);
@@ -235,13 +290,23 @@ export function mount(root, { role, send, now = () => Date.now() }) {
   function finalBoard({ highlight } = {}) {
     const aborted = pub.ended?.reason === 'aborted';
     const top = pub.standings.filter((s) => s.rank === 1);
+    // 시상대: 단독 1위일 때 순위표 앞 3명 (공동 순위는 순위 숫자 그대로)
+    const podium = top.length === 1 && pub.standings.length >= 2
+      ? el('div', { class: 'g-rps__podium', 'aria-hidden': 'true' }, pub.standings.slice(0, 3).map((s, i) => el('div', { class: `g-rps__step g-rps__step--${i + 1} g-rps__step--r${Math.min(s.rank, 3)}` }, [
+        el('span', { class: 'g-rps__step-name', text: s.name }),
+        el('span', { class: 'g-rps__step-block' }, [el('span', { class: 'g-rps__step-rank', text: `${s.rank}위` })]),
+      ])))
+      : null;
     return el('div', { class: 'g-rps__final', 'data-final': true }, [
       el('p', { class: 'g-rps__kicker', text: aborted ? '게임 중단 — 공개된 결과 기준' : 'FINAL RESULT' }),
-      el('p', { class: 'g-rps__final-champ' }, top.length === 1
-        ? ['🏆 최후의 1인: ', el('strong', { 'data-champion': true, text: top[0].name })]
-        : ['생존자 공동 1위: ', el('strong', { 'data-champion': true, text: top.map((t) => t.name).join(', ') })]),
+      el('div', { class: 'g-rps__final-hero' }, [
+        el('p', { class: 'g-rps__final-champ' }, top.length === 1
+          ? [trophyIcon(), '최후의 1인: ', el('strong', { 'data-champion': true, text: top[0].name })]
+          : ['생존자 공동 1위: ', el('strong', { 'data-champion': true, text: top.map((t) => t.name).join(', ') })]),
+        podium,
+      ]),
       aborted ? el('p', { class: 'g-rps__notice g-rps__notice--warn', text: `진행자가 ${pub.ended.round}라운드 중 게임을 중단했습니다.` }) : null,
-      el('ol', { class: 'g-rps__ranking', 'data-ranking': true }, pub.standings.map((s) => el('li', { class: s.playerId === highlight ? 'is-me' : '', 'data-player': s.playerId }, [
+      el('ol', { class: 'g-rps__ranking', 'data-ranking': true }, pub.standings.map((s) => el('li', { class: `${s.playerId === highlight ? 'is-me' : ''}${s.rank === 1 ? ' is-top' : ''}`.trim(), 'data-player': s.playerId }, [
         el('span', { class: 'g-rps__rank', text: `${s.rank}위` }),
         el('span', { class: 'g-rps__rank-name', text: s.name }),
         el('span', { class: 'g-rps__rank-info', text: s.alive ? '생존' : `${s.eliminatedRound}R 탈락` }),
@@ -252,8 +317,8 @@ export function mount(root, { role, send, now = () => Date.now() }) {
   // ── 참가자 화면 ───────────────────────────────────────
   function drawPlayer() {
     const nodes = [el('div', { class: 'g-rps__top' }, [
-      el('span', { class: 'g-rps__round', text: roundLabel() }),
-      el('span', { class: 'g-rps__alive', text: `생존 ${pub.aliveCount}명` }),
+      el('span', { class: 'g-rps__chip g-rps__round', text: roundLabel() }),
+      aliveChip(),
       active() && mine?.alive ? timerEl() : null,
     ])];
     const rn = restartNotice();
@@ -279,18 +344,18 @@ export function mount(root, { role, send, now = () => Date.now() }) {
       const same = confirmed && selTwo.length === 2 && [...selTwo].sort().join() === confirmed.join();
       nodes.push(el('p', { class: 'g-rps__lead', text: '① 서로 다른 손 두 개를 고르세요' }));
       nodes.push(el('div', { class: 'g-rps__picker', role: 'group', 'aria-label': '두 손 고르기' }, [1, 2, 3].map((h) => el('button', {
-        type: 'button', class: `g-rps__pick${selTwo.includes(h) ? ' is-selected' : ''}`, 'data-pick': h, 'aria-pressed': selTwo.includes(h) ? 'true' : 'false', disabled,
+        type: 'button', class: `g-rps__pick${selTwo.includes(h) ? ' is-selected' : ''}`, 'data-pick': h, 'data-hand': h, 'aria-pressed': selTwo.includes(h) ? 'true' : 'false', disabled,
         onclick: () => { selTwo = selTwo.includes(h) ? selTwo.filter((x) => x !== h) : [...selTwo, h].slice(-2); lastError = ''; draw(); },
-      }, [el('span', { class: 'g-rps__icon', 'aria-hidden': 'true', text: HAND[h].icon }), el('span', { text: HAND[h].name })]))));
+      }, pickContent(h)))));
       nodes.push(el('button', {
-        type: 'button', class: 'g-rps__submit', 'data-action': 'submit-two', disabled: disabled || selTwo.length !== 2 || same,
+        type: 'button', class: `g-rps__submit${same ? ' is-done' : ''}`, 'data-action': 'submit-two', disabled: disabled || selTwo.length !== 2 || same,
         text: busy === 'two' ? '내는 중…' : same ? '✓ 두 손 제출 완료' : confirmed ? '이 두 손으로 바꾸기' : '두 손 내기',
         onclick: submitTwo,
       }));
       nodes.push(statusLine({ closed, confirmedText: confirmed && `✓ 낸 두 손: ${confirmed.map(handLabel).join(' + ')}`, same, pending: selTwo.length === 2 && !same, need: selTwo.length < 2 ? '두 개를 고르면 "두 손 내기"를 누를 수 있습니다.' : null, pendingText: confirmed ? '새로 고른 두 손은 아직 제출되지 않았습니다. 버튼을 눌러야 바뀝니다.' : '"두 손 내기"를 눌러야 확정됩니다.', dataSubmitted: confirmed ? pairCode(confirmed) : null, hint: '마감 전에는 바꿀 수 있습니다.' }));
     } else if (pub.phase === 'PICK_ONE') {
       const two = myTwo();
-      nodes.push(el('div', { class: 'g-rps__hostpair' }, [el('p', { class: 'g-rps__kicker', text: '진행자의 두 손' }), el('div', { class: 'g-rps__hands' }, pub.hostTwo.map((h) => handEl(h)))]));
+      nodes.push(el('div', { class: 'g-rps__hostpair g-rps__hostpair--inline' }, [el('p', { class: 'g-rps__kicker', text: '진행자의 두 손' }), el('div', { class: 'g-rps__hands' }, pub.hostTwo.map((h) => handEl(h)))]));
       if (!two) {
         nodes.push(el('p', { class: 'g-rps__notice g-rps__notice--error', 'data-no-two': true, text: '두 손을 내지 않아 이번 라운드는 탈락 예정입니다.' }));
       } else {
@@ -300,11 +365,11 @@ export function mount(root, { role, send, now = () => Date.now() }) {
         const same = confirmed && selOne === confirmed;
         nodes.push(el('p', { class: 'g-rps__lead', text: '② 하나 빼기! 남길 손을 고르세요' }));
         nodes.push(el('div', { class: 'g-rps__picker g-rps__picker--two', role: 'group', 'aria-label': '남길 손 고르기' }, two.map((h) => el('button', {
-          type: 'button', class: `g-rps__pick${selOne === h ? ' is-selected' : ''}`, 'data-keep': h, 'aria-pressed': selOne === h ? 'true' : 'false', disabled,
+          type: 'button', class: `g-rps__pick${selOne === h ? ' is-selected' : ''}`, 'data-keep': h, 'data-hand': h, 'aria-pressed': selOne === h ? 'true' : 'false', disabled,
           onclick: () => { selOne = h; lastError = ''; draw(); },
-        }, [el('span', { class: 'g-rps__icon', 'aria-hidden': 'true', text: HAND[h].icon }), el('span', { text: HAND[h].name })]))));
+        }, pickContent(h)))));
         nodes.push(el('button', {
-          type: 'button', class: 'g-rps__submit', 'data-action': 'submit-one', disabled: disabled || !selOne || same,
+          type: 'button', class: `g-rps__submit${same ? ' is-done' : ''}`, 'data-action': 'submit-one', disabled: disabled || !selOne || same,
           text: busy === 'one' ? '내는 중…' : same ? '✓ 남길 손 제출 완료' : confirmed ? '이 손으로 바꾸기' : '이 손 남기기',
           onclick: submitOne,
         }));
@@ -312,7 +377,7 @@ export function mount(root, { role, send, now = () => Date.now() }) {
       }
     } else if (pub.phase === 'ROUND_CLOSED') {
       const one = mineMatches() ? mine.current?.one : null;
-      nodes.push(el('p', { class: 'g-rps__lead', text: '마감! 진행자의 손 공개를 기다리는 중' }));
+      nodes.push(el('p', { class: 'g-rps__lead g-rps__lead--center', text: '마감! 진행자의 손 공개를 기다리는 중' }));
       nodes.push(el('p', { class: 'g-rps__notice', 'data-final-pick': one || 'none', text: one ? `내가 남긴 손: ${handLabel(one)}` : '이번 라운드에 손을 끝까지 내지 않았습니다 (탈락 대상).' }));
     } else if (pub.phase === 'ROUND_RESULT') {
       const r = lastResult();
@@ -322,7 +387,12 @@ export function mount(root, { role, send, now = () => Date.now() }) {
       nodes.push(card, board);
     } else if (pub.phase === 'GAME_FINISHED') {
       const me = pub.standings.find((s) => s.playerId === mine?.playerId);
-      if (me) nodes.push(el('p', { class: 'g-rps__lead', 'data-my-rank': me.rank, text: me.alive && me.rank === 1 && pub.aliveCount === 1 ? '🏆 최후의 1인! 축하합니다' : `내 최종 순위: ${me.rank}위${pub.standings.filter((s) => s.rank === me.rank).length > 1 ? ' (공동)' : ''}` }));
+      if (me) {
+        const champ = me.alive && me.rank === 1 && pub.aliveCount === 1;
+        nodes.push(el('p', { class: `g-rps__myrank${champ ? ' is-champ' : ''}`, 'data-my-rank': me.rank }, champ
+          ? [trophyIcon(), '최후의 1인! 축하합니다']
+          : [el('span', { class: 'g-rps__myrank-label', text: '내 최종 순위' }), el('strong', { text: `${me.rank}위${pub.standings.filter((s) => s.rank === me.rank).length > 1 ? ' (공동)' : ''}` })]));
+      }
       nodes.push(finalBoard({ highlight: mine?.playerId }));
     }
     return nodes;
@@ -354,14 +424,15 @@ export function mount(root, { role, send, now = () => Date.now() }) {
     rows.push(['결과', verdict]);
     const winner = r.survivorCount === 1 && h.survived;
     return el('div', { class: `g-rps__card${h.survived ? ' is-win' : ' is-out'}`, 'data-my-result': true }, [
+      el('p', { class: 'g-rps__verdict', 'aria-hidden': 'true', text: r.cancelled ? '무효 · 생존' : h.survived ? '생존!' : '탈락' }),
       el('dl', { class: 'g-rps__dl' }, rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { text: v })])),
-      el('p', { class: 'g-rps__next', text: winner ? '🏆 최후의 1인이 되었습니다!' : h.survived ? `생존 ${r.survivorCount}명 — 진행자가 다음 라운드를 시작합니다.` : '앞 화면에서 남은 경기를 지켜봐 주세요.' }),
+      el('p', { class: 'g-rps__next', text: winner ? '최후의 1인이 되었습니다!' : h.survived ? `생존 ${r.survivorCount}명 — 진행자가 다음 라운드를 시작합니다.` : '앞 화면에서 남은 경기를 지켜봐 주세요.' }),
     ]);
   }
 
   // ── 진행자 화면 ───────────────────────────────────────
-  function btn(label, attrs) {
-    return el('button', { type: 'button', class: 'g-rps__btn', ...attrs, text: label, disabled: attrs.disabled || !!busy });
+  function btn(label, attrs, kids = null) {
+    return el('button', { type: 'button', class: 'g-rps__btn', ...attrs, text: kids ? undefined : label, disabled: attrs.disabled || !!busy }, kids || []);
   }
 
   function hostHandPicker() {
@@ -370,13 +441,13 @@ export function mount(root, { role, send, now = () => Date.now() }) {
       const send2 = (two) => hostAction('host-two', 'host-two', { value: pairCode(two) });
       return el('div', { class: 'g-rps__hostpick', 'data-host-picker': 'two' }, [
         el('p', { class: 'g-rps__kicker', text: '진행자 두 손 (참가자에게는 ② 단계에서 공개)' }),
-        el('div', { class: 'g-rps__picker' }, [1, 2, 3].map((h) => btn(`${HAND[h].icon} ${HAND[h].name}`, {
-          class: `g-rps__btn g-rps__pick${selTwo.includes(h) ? ' is-selected' : ''}`, 'data-host-pick': h, 'aria-pressed': selTwo.includes(h) ? 'true' : 'false',
+        el('div', { class: 'g-rps__picker' }, [1, 2, 3].map((h) => btn(HAND[h].name, {
+          class: `g-rps__btn g-rps__pick${selTwo.includes(h) ? ' is-selected' : ''}`, 'data-host-pick': h, 'data-hand': h, 'aria-pressed': selTwo.includes(h) ? 'true' : 'false',
           onclick: () => { selTwo = selTwo.includes(h) ? selTwo.filter((x) => x !== h) : [...selTwo, h].slice(-2); draw(); },
-        }))),
+        }, pickContent(h)))),
         el('div', { class: 'g-rps__controls' }, [
           btn('이 두 손으로 정하기', { class: 'g-rps__btn g-rps__btn--primary', 'data-action': 'host-two', disabled: selTwo.length !== 2, onclick: () => send2(selTwo) }),
-          btn('🎲 무작위', { 'data-action': 'host-two-random', onclick: () => { const drop = 1 + Math.floor(Math.random() * 3); selTwo = [1, 2, 3].filter((x) => x !== drop); send2(selTwo); } }),
+          btn('무작위로 정하기', { 'data-action': 'host-two-random', onclick: () => { const drop = 1 + Math.floor(Math.random() * 3); selTwo = [1, 2, 3].filter((x) => x !== drop); send2(selTwo); } }),
         ]),
         el('p', { class: chosen ? 'g-rps__notice g-rps__notice--ok' : 'g-rps__notice g-rps__notice--warn', 'data-host-chosen': chosen ? pairCode(chosen) : 'none', text: chosen ? `정해진 두 손: ${chosen.map(handLabel).join(' + ')} (마감 전 변경 가능)` : '아직 정하지 않았습니다. 정해야 마감됩니다.' }),
       ]);
@@ -386,10 +457,10 @@ export function mount(root, { role, send, now = () => Date.now() }) {
       const send1 = (h) => hostAction('host-one', 'host-one', { value: h });
       return el('div', { class: 'g-rps__hostpick', 'data-host-picker': 'one' }, [
         el('p', { class: 'g-rps__kicker', text: '진행자가 남길 손 (결과 공개 때 공개)' }),
-        el('div', { class: 'g-rps__picker g-rps__picker--two' }, pub.hostTwo.map((h) => btn(`${HAND[h].icon} ${HAND[h].name}`, {
-          class: `g-rps__btn g-rps__pick${chosen === h ? ' is-selected' : ''}`, 'data-host-keep': h, onclick: () => send1(h),
-        }))),
-        btn('🎲 무작위', { 'data-action': 'host-one-random', onclick: () => send1(pub.hostTwo[Math.floor(Math.random() * 2)]) }),
+        el('div', { class: 'g-rps__picker g-rps__picker--two' }, pub.hostTwo.map((h) => btn(HAND[h].name, {
+          class: `g-rps__btn g-rps__pick${chosen === h ? ' is-selected' : ''}`, 'data-host-keep': h, 'data-hand': h, onclick: () => send1(h),
+        }, pickContent(h)))),
+        btn('무작위로 정하기', { 'data-action': 'host-one-random', onclick: () => send1(pub.hostTwo[Math.floor(Math.random() * 2)]) }),
         el('p', { class: chosen ? 'g-rps__notice g-rps__notice--ok' : 'g-rps__notice g-rps__notice--warn', 'data-host-chosen': chosen || 'none', text: chosen ? `남길 손: ${handLabel(chosen)} (마감 전 변경 가능)` : '아직 정하지 않았습니다. 정해야 마감됩니다.' }),
       ]);
     }
@@ -475,24 +546,35 @@ export function mount(root, { role, send, now = () => Date.now() }) {
   // ── 공개 화면 ─────────────────────────────────────────
   function drawDisplay() {
     const nodes = [el('div', { class: 'g-rps__top' }, [
-      el('span', { class: 'g-rps__title', text: '가위바위보 하나빼기' }),
-      el('span', { class: 'g-rps__round', 'data-display-round': true, text: `${roundLabel()} · 생존 ${pub.aliveCount}명` }),
+      el('span', { class: 'g-rps__title' }, [el('span', { class: 'g-rps__logo', 'aria-hidden': 'true' }, [1, 2, 3].map((h) => el('span', { 'data-logo-hand': h }, handIcon(h)))), '가위바위보 하나빼기']),
+      el('span', { class: 'g-rps__round', 'data-display-round': true }, [el('span', { class: 'g-rps__chip', text: roundLabel() }), aliveChip()]),
     ])];
     const rn = restartNotice();
     if (rn) nodes.push(rn);
     if (pub.phase === 'LOBBY') {
-      nodes.push(el('p', { class: 'g-rps__lead', text: pub.restart?.round === pub.round ? `${pub.round}라운드를 다시 시작합니다.` : `곧 ${pub.round}라운드가 시작됩니다.` }), rulesPanel());
+      nodes.push(
+        el('div', { class: 'g-rps__hero', 'aria-hidden': 'true' }, [1, 2, 3].map((h) => handEl(h, 'is-big'))),
+        el('p', { class: 'g-rps__lead', text: pub.restart?.round === pub.round ? `${pub.round}라운드를 다시 시작합니다.` : `곧 ${pub.round}라운드가 시작됩니다.` }),
+        rulesPanel(),
+      );
     } else if (active()) {
       const state = el('p', { class: 'g-rps__lead' });
       tickers.push(() => {
         state.textContent = pub.paused ? '⏸ 일시정지 — 진행자가 재개하면 계속됩니다' : timeUp() ? '마감 중…' : pub.phase === 'PICK_TWO' ? '① 서로 다른 손 두 개를 내세요!' : '② 하나 빼기! 남길 손을 고르세요';
         state.classList.toggle('g-rps__notice--warn', pub.paused);
       });
-      if (pub.phase === 'PICK_ONE') nodes.push(el('div', { class: 'g-rps__hostpair' }, [el('p', { class: 'g-rps__kicker', text: '진행자의 두 손' }), el('div', { class: 'g-rps__hands' }, pub.hostTwo.map((h) => handEl(h, 'is-big')))]));
-      nodes.push(timerEl(true), state, el('p', { class: 'g-rps__subcount', 'data-display-submitted': submitted(), text: `제출 ${submitted()} / ${pub.aliveCount}명` }),
-        el('div', { class: 'g-rps__progress' }, el('span', { style: `width:${pub.aliveCount ? Math.round((submitted() / pub.aliveCount) * 100) : 0}%` })));
+      const clock = el('div', { class: 'g-rps__clock' }, [timerEl(true), state,
+        el('div', { class: 'g-rps__submits' }, [seatsEl(), el('p', { class: 'g-rps__subcount', 'data-display-submitted': submitted(), text: `제출 ${submitted()} / ${pub.aliveCount}명` })])]);
+      const host = pub.phase === 'PICK_ONE'
+        ? el('div', { class: 'g-rps__hostpair g-rps__hostpair--stage' }, [el('p', { class: 'g-rps__kicker', text: '진행자의 두 손' }), el('div', { class: 'g-rps__hands' }, pub.hostTwo.map((h) => handEl(h, 'is-big')))])
+        : null;
+      nodes.push(el('div', { class: `g-rps__stage${host ? ' g-rps__stage--split' : ''}` }, [host, clock]));
     } else if (pub.phase === 'ROUND_CLOSED') {
-      nodes.push(el('p', { class: 'g-rps__big', 'data-closed': true, text: '마감!' }), el('p', { class: 'g-rps__lead', text: '진행자가 남긴 손을 공개합니다…' }));
+      nodes.push(el('div', { class: 'g-rps__stage g-rps__drum' }, [
+        el('p', { class: 'g-rps__big', 'data-closed': true, text: '마감!' }),
+        pub.hostTwo ? el('div', { class: 'g-rps__hands g-rps__hands--drum', 'aria-hidden': 'true' }, pub.hostTwo.map((h) => el('span', { class: 'g-rps__hand is-big', 'data-hand': h }, [el('span', { class: 'g-rps__icon' }, handIcon(h)), el('span', { class: 'g-rps__hname', text: HAND[h].name })]))) : null,
+        el('p', { class: 'g-rps__lead', text: '진행자가 남긴 손을 공개합니다…' }),
+      ]));
     } else if (pub.phase === 'ROUND_RESULT') {
       nodes.push(resultBoard(lastResult()));
     } else if (pub.phase === 'GAME_FINISHED') {
